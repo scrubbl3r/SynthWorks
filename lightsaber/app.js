@@ -12,6 +12,7 @@
 
   const PARAMS = [
     { key: "oscType", label: "Oscillator" },
+    { key: "pwmOn", label: "PWM On" },
     { key: "pwm", label: "PWM" },
     { key: "oscRate", label: "Osc Rate" },
     { key: "baseHz", label: "Base Pitch" },
@@ -45,6 +46,7 @@
 
   const defaults = () => ({
     oscType: RNG.pick(["sawtooth", "square", "triangle"]),
+    pwmOn: true,
     pwm: +RNG.range(0.08, 0.92).toFixed(2),
     oscRate: +RNG.range(0.7, 1.6).toFixed(2),
     baseHz: Math.round(RNG.range(70, 190)),
@@ -147,7 +149,7 @@
 
     const noiseHP = ctx.createBiquadFilter();
     noiseHP.type = "highpass";
-    noiseHP.frequency.value = 300;
+    noiseHP.frequency.value = 0;
 
     const noiseG = ctx.createGain();
     noiseG.gain.value = 0.0;
@@ -215,7 +217,7 @@
       const t = ctx.currentTime;
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
-      if (p.oscType === "square") {
+      if (p.oscType === "square" && p.pwmOn) {
         const wave = makePWMWave(ctx, clamp(p.pwm, 0.05, 0.95));
         oscA.setPeriodicWave(wave);
         oscB.setPeriodicWave(wave);
@@ -372,6 +374,8 @@
       const key = input.dataset.param;
       if (input.tagName === "SELECT") {
         input.value = p[key];
+      } else if (input.type === "checkbox") {
+        input.checked = !!p[key];
       } else {
         input.value = p[key];
       }
@@ -387,6 +391,7 @@
     if (key === "detune") return `${Math.round(value)} ct`;
     if (key === "filterQ") return value.toFixed(1);
     if (key === "pwm") return value.toFixed(2);
+    if (key === "pwmOn") return value ? "On" : "Off";
     if (key === "oscRate") return value.toFixed(2) + "x";
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
@@ -405,6 +410,8 @@
 
       if (target.tagName === "SELECT") {
         p[key] = target.value;
+      } else if (target.type === "checkbox") {
+        p[key] = target.checked;
       } else {
         p[key] = parseFloat(target.value);
       }
