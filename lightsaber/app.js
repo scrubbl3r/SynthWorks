@@ -66,7 +66,7 @@
     voices: [],
     voiceParams: [],
     frozen: [false, false, false, false, false],
-    muted: [false, false, false, false, false],
+    muted: [false, true, true, true, true],
     active: 0,
     ready: false
   };
