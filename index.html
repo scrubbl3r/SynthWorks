@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GAME DEV</title>
+  <style>
+    :root { --green: #7dd35f; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      color: var(--green);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    /* Center the whole block on the page */
+    .wrap {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* Keep header + links close together */
+    .stack {
+      display: grid;
+      justify-items: center;
+      gap: 10px; /* vertical spacing between header and link group */
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 48px;
+      letter-spacing: 0.08em;
+    }
+
+    .links a {
+      display: block;     /* puts each link on its own line */
+      color: var(--green);
+      text-decoration: none;
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .links a:hover,
+    .links a:focus {
+      text-decoration: underline;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="stack">
+      <h1>Skunk Works</h1>
+      <br>
+      <br>
+      <div class="links">
+        <a href="lightsaber/index.html" target="_blank" rel="noopener noreferrer">Zword (defender lightsaber)</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
