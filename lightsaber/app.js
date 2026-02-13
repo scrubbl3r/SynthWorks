@@ -3,6 +3,8 @@
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
+  const startOverlay = document.getElementById("startOverlay");
+  const startBtn = document.getElementById("startBtn");
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const clamp01 = (v) => clamp(v, 0, 1);
@@ -365,6 +367,7 @@
     if (state.ctx.state !== "running") {
       try { await state.ctx.resume(); } catch (_) {}
     }
+    if (startOverlay) startOverlay.style.display = "none";
   }
 
   function regenerate() {
@@ -385,6 +388,10 @@
   }
 
   regenBtn.addEventListener("click", regenerate);
+  if (startOverlay && startBtn) {
+    startOverlay.addEventListener("click", startAudio);
+    startBtn.addEventListener("click", startAudio);
+  }
 
   init();
 })();
