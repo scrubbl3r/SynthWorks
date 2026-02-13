@@ -16,14 +16,17 @@
     t: 0,
     omega: 0,
     omegaRaw: 0,
+    rot: { a: 0, b: 0, g: 0 },
     roll: 0,
     pitch: 0,
     yaw: 0,
     accLin: 0,
     jerk: 0,
     swing: 0,
+    swingHi: 0,
     smooth: 1,
     energy: 0,
+    pan: 0,
     strikeReadyAt: 0,
     lastLin: 0,
     gLP: { x: 0, y: 0, z: 0, has: false },
@@ -43,7 +46,9 @@
     jerkMax: 24,
     strikeThr: 11,
     strikeJerk: 18,
-    strikeCooldownMs: 200
+    strikeCooldownMs: 200,
+    swingSplit: 0.45,
+    swingWidth: 0.28
   };
 
   const RNG = {
@@ -80,6 +85,10 @@
       drive: RNG.range(0.2, 0.85),
       resQ: RNG.range(8, 24),
       resGain: RNG.range(0.12, 0.34),
+      swingLowHz: RNG.range(120, 260),
+      swingHighHz: RNG.range(520, 1200),
+      swingQ: RNG.range(0.6, 2.2),
+      swingNoise: RNG.range(0.25, 0.75),
       clash: {
         bite: RNG.range(0.4, 1.0),
         noise: RNG.range(0.6, 1.0),
@@ -123,6 +132,7 @@
     bus.connect(stereo.entry);
 
     const hum = createHum(ctx, bus, noiseBuf);
+    const swing = createSwing(ctx, bus, noiseBuf);
 
     const drive = makeDrive(ctx);
     hum.mix.connect(drive.input);
@@ -134,6 +144,7 @@
       bus,
       stereo,
       hum,
+      swing,
       drive,
       patch: null,
       applyPatch,
@@ -145,6 +156,7 @@
       if (!patch) return;
       this.patch = patch;
       hum.setPatch(patch);
+      swing.setPatch(patch);
       drive.setAmount(patch.drive);
       randomizeStereoByFreq(stereo, RNG.next.bind(RNG));
     }
@@ -158,6 +170,7 @@
     function update(state) {
       if (!this.patch) return;
       hum.update(state, this.patch);
+      swing.update(state, this.patch);
       const panShift = clamp(state.roll / 45, -1, 1) * 0.4;
       stereo.bands.forEach((b) => {
         const target = clamp(b.basePan + panShift, -1, 1);
@@ -317,6 +330,7 @@
     function update(state, patch) {
       const t = ctx.currentTime;
       const swing = clamp01(state.swing);
+      const swingHi = clamp01(state.swingHi);
       const smooth = clamp01(state.smooth);
       const energy = clamp01(state.energy);
 
@@ -331,13 +345,14 @@
       const whooshCut = patch.whooshLP + 1200 * swing;
       whoosh.frequency.setTargetAtTime(whooshCut, t, 0.04);
 
-      const humAmp = 0.12 + 0.6 * energy + 0.4 * swing;
+      const duck = 1 - 0.45 * swingHi;
+      const humAmp = (0.12 + 0.6 * energy + 0.35 * swing) * duck;
       humGain.gain.setTargetAtTime(humAmp, t, 0.05);
 
       const whooshAmp = 0.04 + 0.5 * swing * smooth;
       whooshGain.gain.setTargetAtTime(whooshAmp, t, 0.06);
 
-      const noiseAmt = patch.noiseMix * (0.6 + 0.8 * swing);
+      const noiseAmt = patch.noiseMix * (0.5 + 1.2 * swing) * (0.4 + 0.6 * (1 - smooth));
       noiseGain.gain.setTargetAtTime(noiseAmt, t, 0.06);
 
       resonators.forEach((r, i) => {
@@ -347,6 +362,79 @@
     }
 
     return { mix, update, setPatch };
+  }
+
+  function createSwing(ctx, bus, noiseBuf) {
+    const mix = ctx.createGain();
+    mix.gain.value = 0.8;
+    mix.connect(bus);
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    noise.loop = true;
+
+    const lowBP = ctx.createBiquadFilter();
+    lowBP.type = "bandpass";
+    lowBP.Q.value = 1.2;
+
+    const highBP = ctx.createBiquadFilter();
+    highBP.type = "bandpass";
+    highBP.Q.value = 1.2;
+
+    const oscLow = ctx.createOscillator();
+    oscLow.type = "sawtooth";
+    const oscHigh = ctx.createOscillator();
+    oscHigh.type = "square";
+
+    const lowG = ctx.createGain();
+    const highG = ctx.createGain();
+    lowG.gain.value = 0.0;
+    highG.gain.value = 0.0;
+
+    const noiseG = ctx.createGain();
+    noiseG.gain.value = 0.0;
+
+    noise.connect(lowBP);
+    noise.connect(highBP);
+    lowBP.connect(noiseG);
+    highBP.connect(noiseG);
+    noiseG.connect(mix);
+
+    oscLow.connect(lowG);
+    oscHigh.connect(highG);
+    lowG.connect(mix);
+    highG.connect(mix);
+
+    noise.start();
+    oscLow.start();
+    oscHigh.start();
+
+    function setPatch(patch) {
+      const t = ctx.currentTime;
+      lowBP.frequency.setTargetAtTime(patch.swingLowHz, t, 0.05);
+      highBP.frequency.setTargetAtTime(patch.swingHighHz, t, 0.05);
+      lowBP.Q.setTargetAtTime(patch.swingQ, t, 0.05);
+      highBP.Q.setTargetAtTime(patch.swingQ * 1.2, t, 0.05);
+      oscLow.frequency.setTargetAtTime(patch.swingLowHz * 0.5, t, 0.05);
+      oscHigh.frequency.setTargetAtTime(patch.swingHighHz * 0.6, t, 0.05);
+    }
+
+    function update(state, patch) {
+      const t = ctx.currentTime;
+      const swing = clamp01(state.swing);
+      const swingHi = clamp01(state.swingHi);
+      const smooth = clamp01(state.smooth);
+
+      const lowAmt = swing * (1 - swingHi);
+      const highAmt = swingHi;
+      lowG.gain.setTargetAtTime(lowAmt * 0.5, t, 0.02);
+      highG.gain.setTargetAtTime(highAmt * 0.65, t, 0.02);
+
+      const noiseAmt = patch.swingNoise * (0.35 + 0.9 * swing) * (0.4 + 0.6 * (1 - smooth));
+      noiseG.gain.setTargetAtTime(noiseAmt, t, 0.03);
+    }
+
+    return { mix, setPatch, update };
   }
 
   function buildStereoBands(ctx, master) {
@@ -485,6 +573,7 @@
     motion.t = t;
 
     const rot = e.rotationRate || { alpha: 0, beta: 0, gamma: 0 };
+    motion.rot = { a: rot.alpha || 0, b: rot.beta || 0, g: rot.gamma || 0 };
     const omega = Math.hypot(rot.alpha || 0, rot.beta || 0, rot.gamma || 0);
     motion.omegaRaw = omega;
     motion.omega = lerp(motion.omega, omega, SETTINGS.omegaSlew);
@@ -552,6 +641,11 @@
     const swingAtk = swingTarget > motion.swing ? SETTINGS.swingAtk : SETTINGS.swingRel;
     motion.swing = lerp(motion.swing, swingTarget, swingAtk);
 
+    const split = SETTINGS.swingSplit;
+    const width = SETTINGS.swingWidth;
+    const hiT = clamp01((motion.swing - (split - width)) / (2 * width));
+    motion.swingHi = lerp(motion.swingHi, hiT * hiT * (3 - 2 * hiT), 0.15);
+
     const jerkNorm = clamp01(motion.jerk / SETTINGS.jerkMax);
     const smoothTarget = clamp01(1 - jerkNorm);
     const smoothAtk = smoothTarget > motion.smooth ? SETTINGS.smoothAtk : SETTINGS.smoothRel;
@@ -560,6 +654,9 @@
     const energyTarget = clamp01(motion.swing * (0.4 + 0.6 * motion.smooth));
     const eAtk = energyTarget > motion.energy ? SETTINGS.energyAtk : SETTINGS.energyRel;
     motion.energy = lerp(motion.energy, energyTarget, eAtk);
+
+    const panTarget = clamp(motion.rot.g / 220, -1, 1) * motion.swing;
+    motion.pan = lerp(motion.pan, panTarget, 0.12);
 
     let strike = 0;
     const strikeAllowed = nowMs() > motion.strikeReadyAt;
@@ -571,9 +668,10 @@
     if (engine && audioReady) {
       engine.update({
         swing: motion.swing,
+        swingHi: motion.swingHi,
         smooth: motion.smooth,
         energy: motion.energy,
-        roll: motion.roll,
+        roll: motion.roll + motion.pan * 35,
         strike
       });
     }
@@ -602,9 +700,10 @@
       if (engine && audioReady) {
         engine.update({
           swing: motion.swing,
+          swingHi: motion.swingHi,
           smooth: motion.smooth,
           energy: motion.energy,
-          roll: motion.roll,
+          roll: motion.roll + motion.pan * 35,
           strike: 0
         });
       }
