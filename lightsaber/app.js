@@ -13,6 +13,7 @@
   const PARAMS = [
     { key: "oscType", label: "Oscillator" },
     { key: "pwm", label: "PWM" },
+    { key: "oscRate", label: "Osc Rate" },
     { key: "baseHz", label: "Base Pitch" },
     { key: "detune", label: "Detune" },
     { key: "subMix", label: "Sub Mix" },
@@ -22,6 +23,7 @@
     { key: "edge", label: "Bandpass Edge" },
     { key: "drive", label: "Drive" },
     { key: "stereoWidth", label: "Stereo Width" },
+    { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
   ];
 
@@ -44,6 +46,7 @@
   const defaults = () => ({
     oscType: RNG.pick(["sawtooth", "square", "triangle"]),
     pwm: +RNG.range(0.08, 0.92).toFixed(2),
+    oscRate: +RNG.range(0.7, 1.6).toFixed(2),
     baseHz: Math.round(RNG.range(70, 190)),
     detune: Math.round(RNG.range(0, 24)),
     subMix: +RNG.range(0.12, 0.55).toFixed(2),
@@ -53,6 +56,7 @@
     edge: +RNG.range(0.0, 0.7).toFixed(2),
     drive: +RNG.range(0.1, 0.8).toFixed(2),
     stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
+    spatialize: +RNG.range(0.0, 0.8).toFixed(2),
     gain: +RNG.range(0.25, 0.7).toFixed(2)
   });
 
@@ -173,6 +177,24 @@
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
 
+    const spatialBands = [];
+    const centers = [120, 220, 380, 620, 980, 1600, 2600, 4200];
+    centers.forEach((fc) => {
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = fc;
+      bp.Q.value = 2.2;
+      const g = ctx.createGain();
+      g.gain.value = 0.0;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = 0;
+      filter.connect(bp);
+      bp.connect(g);
+      g.connect(pan);
+      pan.connect(master);
+      spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
+    });
+
     mix.connect(filter);
     filter.connect(drive.input);
     drive.output.connect(gain);
@@ -191,6 +213,8 @@
 
     function apply(p, muted, width, basePan) {
       const t = ctx.currentTime;
+      const rate = clamp(p.oscRate, 0.5, 2.5);
+      const base = p.baseHz * rate;
       if (p.oscType === "square") {
         const wave = makePWMWave(ctx, clamp(p.pwm, 0.05, 0.95));
         oscA.setPeriodicWave(wave);
@@ -201,9 +225,9 @@
       }
       oscSub.type = "triangle";
 
-      oscA.frequency.setTargetAtTime(p.baseHz, t, 0.03);
-      oscB.frequency.setTargetAtTime(p.baseHz * 1.01, t, 0.03);
-      oscSub.frequency.setTargetAtTime(p.baseHz * 0.5, t, 0.03);
+      oscA.frequency.setTargetAtTime(base, t, 0.03);
+      oscB.frequency.setTargetAtTime(base * 1.01, t, 0.03);
+      oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
 
       oscB.detune.setTargetAtTime(p.detune * 2, t, 0.04);
 
@@ -220,6 +244,34 @@
       drive.setAmount(p.drive);
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
+
+      applySpatialization(p.spatialize, muted);
+    }
+
+    let lastSpatialize = -1;
+    function applySpatialization(amount, muted) {
+      const t = ctx.currentTime;
+      const amt = clamp01(amount);
+      if (muted || amt <= 0) {
+        spatialBands.forEach((b) => b.g.gain.setTargetAtTime(0, t, 0.06));
+        lastSpatialize = amt;
+        return;
+      }
+
+      if (Math.abs(amt - lastSpatialize) > 0.02) {
+        spatialBands.forEach((b) => {
+          const pan = (Math.random() * 2 - 1) * lerp(0.2, 1.0, amt);
+          const g = lerp(0.02, 0.22, amt) * (0.4 + Math.random() * 0.9);
+          b.panTarget = pan;
+          b.gainTarget = g;
+        });
+        lastSpatialize = amt;
+      }
+
+      spatialBands.forEach((b) => {
+        b.g.gain.setTargetAtTime(b.gainTarget, t, 0.08);
+        b.pan.pan.setTargetAtTime(b.panTarget, t, 0.08);
+      });
     }
 
     return { apply };
@@ -323,7 +375,7 @@
       } else {
         input.value = p[key];
       }
-      input.disabled = state.active == null;
+      input.disabled = state.active == null || state.muted[state.active];
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
@@ -335,8 +387,10 @@
     if (key === "detune") return `${Math.round(value)} ct`;
     if (key === "filterQ") return value.toFixed(1);
     if (key === "pwm") return value.toFixed(2);
+    if (key === "oscRate") return value.toFixed(2) + "x";
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
+    if (key === "spatialize") return value.toFixed(2);
     if (key === "oscType") return value;
     return Number(value).toFixed(2);
   }
