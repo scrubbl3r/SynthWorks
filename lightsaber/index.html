@@ -3,13 +3,104 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Orb Saber</title>
+  <title>Orb Saber Workshop</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="stage" aria-label="Lightsaber audio controller">
-    <button id="regenBtn" class="regen" type="button">Regenerate</button>
-  </main>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="title">Orb Saber Workshop</div>
+      <button id="regenBtn" class="regen" type="button">Regenerate</button>
+    </header>
+
+    <section class="voiceStrip" aria-label="Lightsaber voice stack">
+      <div class="voiceGrid" id="voiceGrid"></div>
+    </section>
+
+    <section class="panel" aria-label="Voice editor">
+      <div class="panelHeader">
+        <div class="panelTitle">Voice Controls</div>
+        <div class="panelSub" id="activeLabel">Editing: Voice 1</div>
+      </div>
+
+      <div class="controls" id="controls">
+        <label class="row">
+          <span>Oscillator</span>
+          <select data-param="oscType">
+            <option value="sawtooth">Saw</option>
+            <option value="square">Square</option>
+            <option value="triangle">Triangle</option>
+          </select>
+        </label>
+
+        <label class="row">
+          <span>PWM</span>
+          <input type="range" min="0.05" max="0.95" step="0.01" data-param="pwm" />
+          <output data-out="pwm"></output>
+        </label>
+
+        <label class="row">
+          <span>Base Pitch</span>
+          <input type="range" min="60" max="240" step="1" data-param="baseHz" />
+          <output data-out="baseHz"></output>
+        </label>
+
+        <label class="row">
+          <span>Detune</span>
+          <input type="range" min="0" max="30" step="1" data-param="detune" />
+          <output data-out="detune"></output>
+        </label>
+
+        <label class="row">
+          <span>Sub Mix</span>
+          <input type="range" min="0" max="0.8" step="0.01" data-param="subMix" />
+          <output data-out="subMix"></output>
+        </label>
+
+        <label class="row">
+          <span>Noise Mix</span>
+          <input type="range" min="0" max="0.6" step="0.01" data-param="noiseMix" />
+          <output data-out="noiseMix"></output>
+        </label>
+
+        <label class="row">
+          <span>Filter Cutoff</span>
+          <input type="range" min="200" max="5000" step="1" data-param="filterCutoff" />
+          <output data-out="filterCutoff"></output>
+        </label>
+
+        <label class="row">
+          <span>Filter Resonance</span>
+          <input type="range" min="0.2" max="12" step="0.1" data-param="filterQ" />
+          <output data-out="filterQ"></output>
+        </label>
+
+        <label class="row">
+          <span>Bandpass Edge</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="edge" />
+          <output data-out="edge"></output>
+        </label>
+
+        <label class="row">
+          <span>Drive</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="drive" />
+          <output data-out="drive"></output>
+        </label>
+
+        <label class="row">
+          <span>Stereo Width</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="stereoWidth" />
+          <output data-out="stereoWidth"></output>
+        </label>
+
+        <label class="row">
+          <span>Voice Gain</span>
+          <input type="range" min="0" max="0.8" step="0.01" data-param="gain" />
+          <output data-out="gain"></output>
+        </label>
+      </div>
+    </section>
+  </div>
 
   <script src="./app.js" defer></script>
 </body>
