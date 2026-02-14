@@ -133,6 +133,7 @@ body{
   border-right:var(--stroke) solid #000;
 }
 .voiceCard:last-child{ border-right:0; }
+  .voiceCard.isClickable{ cursor:pointer; }
 
 .voiceTitle{
   font-weight:900;
@@ -177,6 +178,18 @@ body{
   justify-content:center;
   gap:10px;
   color:rgba(255,59,24,0.75);
+}
+
+.editTag{
+  position:absolute;
+  bottom:8px;
+  right:8px;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  color:var(--ink);
+  border:1px solid var(--ink);
+  padding:2px 6px;
 }
 
 .addBtn{

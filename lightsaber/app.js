@@ -377,6 +377,16 @@
       const toggles = document.createElement("div");
       toggles.className = "voiceToggles";
 
+      card.classList.add("isClickable");
+      card.addEventListener("click", (e) => {
+        if (e.target && (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT" || e.target.closest("label"))) {
+          return;
+        }
+        state.active = i;
+        renderVoices();
+        syncControls();
+      });
+
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "deleteBtn";
       deleteBtn.type = "button";
@@ -406,20 +416,6 @@
       freezeLabel.appendChild(freezeBox);
       freezeLabel.appendChild(document.createTextNode("Freeze"));
 
-      const editLabel = document.createElement("label");
-      const editBox = document.createElement("input");
-      editBox.type = "checkbox";
-      editBox.checked = state.active === i;
-      editBox.addEventListener("change", () => {
-        if (editBox.checked) {
-          state.active = i;
-        }
-        renderVoices();
-        syncControls();
-      });
-      editLabel.appendChild(editBox);
-      editLabel.appendChild(document.createTextNode("Edit"));
-
       const muteLabel = document.createElement("label");
       const muteBox = document.createElement("input");
       muteBox.type = "checkbox";
@@ -432,14 +428,19 @@
       muteLabel.appendChild(muteBox);
       muteLabel.appendChild(document.createTextNode("Mute"));
 
-      toggles.appendChild(freezeLabel);
-      toggles.appendChild(editLabel);
-      toggles.appendChild(muteLabel);
+      toggles.appendChild(deleteBtn);
       toggles.appendChild(dupBtn);
+      toggles.appendChild(freezeLabel);
+      toggles.appendChild(muteLabel);
 
       card.appendChild(title);
-      card.appendChild(deleteBtn);
       card.appendChild(toggles);
+      if (!isActive) {
+        const editTag = document.createElement("div");
+        editTag.className = "editTag";
+        editTag.textContent = "Edit";
+        card.appendChild(editTag);
+      }
       voiceGrid.appendChild(card);
     }
   }
