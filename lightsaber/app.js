@@ -48,7 +48,7 @@
   };
 
   const defaults = () => ({
-    oscType: RNG.pick(["sawtooth", "square", "triangle"]),
+    oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
     singleOsc: false,
     unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
     pwmOn: true,
