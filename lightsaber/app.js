@@ -12,6 +12,7 @@
   const lerp = (a, b, t) => a + (b - a) * t;
 
   const PARAMS = [
+    { key: "mode", label: "Mode" },
     { key: "oscType", label: "Oscillator" },
     { key: "singleOsc", label: "Single Osc" },
     { key: "unisonSpread", label: "Unison Spread" },
@@ -48,6 +49,7 @@
   };
 
   const defaults = () => ({
+    mode: "texture",
     oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
     singleOsc: false,
     unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
@@ -518,9 +520,11 @@
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
+    applyModeVisibility(p.mode);
   }
 
   function formatValue(key, value) {
+    if (key === "mode") return value;
     if (key === "baseHz") return `${Math.round(value)} Hz`;
     if (key === "filterCutoff") return `${Math.round(value)} Hz`;
     if (key === "detune") return `${Math.round(value)} ct`;
@@ -557,10 +561,20 @@
       if (out) out.textContent = formatValue(key, p[key]);
 
       state.voices[state.active].apply(p, state.muted[state.active], p.stereoWidth, basePanFor(state.active));
+      if (key === "mode") applyModeVisibility(p.mode);
     };
 
     controls.addEventListener("input", onControlChange);
     controls.addEventListener("change", onControlChange);
+  }
+
+  function applyModeVisibility(mode) {
+    const rows = controls.querySelectorAll("[data-mode]");
+    rows.forEach((row) => {
+      const m = row.dataset.mode;
+      const show = m === "all" || m === mode;
+      row.style.display = show ? "" : "none";
+    });
   }
 
   async function startAudio() {
