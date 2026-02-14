@@ -136,6 +136,10 @@ body{
 .voiceCard:last-child{ border-right:0; }
   .voiceCard.isClickable{ cursor:pointer; }
 
+.voiceCard:not(.empty):not(.active){
+  background:var(--panel);
+}
+
 .voiceTitle{
   font-weight:900;
   text-transform:uppercase;
@@ -192,7 +196,6 @@ body{
 }
 
 .voiceCard.frozen{
-  background:#17132f;
   color:rgba(255,59,24,0.6);
 }
 
