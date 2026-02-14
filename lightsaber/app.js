@@ -115,17 +115,18 @@
     p.singleOsc = false;
 
     const uni = skewLowWithSpikes(rand, 4.5, 0.12);
-    p.unisonSpread = +lerp(0.0, 0.02, uni).toFixed(4);
+    p.unisonSpread = +Math.max(0.0001, lerp(0.0, 0.02, uni)).toFixed(4);
 
     const det = skewLowWithSpikes(rand, 4.0, 0.12);
-    p.detune = Math.round(lerp(0, 60, det));
+    p.detune = Math.max(1, Math.round(lerp(0, 60, det)));
 
     p.pwmOn = RNG.next() > 0.2;
     p.pwm = +RNG.range(0.08, 0.92).toFixed(2);
     p.oscRate = +RNG.range(0.7, 1.6).toFixed(2);
     p.baseHz = Math.round(RNG.range(70, 190));
     p.subMix = +RNG.range(0.08, 0.55).toFixed(2);
-    p.noiseMix = +RNG.range(0.0, 0.4).toFixed(2);
+    const noiseOn = Math.floor(rand() * 12) === 0;
+    p.noiseMix = noiseOn ? +RNG.range(0.02, 0.4).toFixed(2) : 0;
     p.filterCutoff = Math.round(RNG.range(400, 2800));
     p.filterQ = +RNG.range(0.5, 8.0).toFixed(1);
     p.edge = +RNG.range(0.0, 0.7).toFixed(2);
