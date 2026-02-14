@@ -140,7 +140,7 @@ body{
   text-transform:uppercase;
   letter-spacing:1px;
   font-size:12px;
-  margin-bottom:10px;
+  margin-bottom:16px;
 }
 
 .voiceToggles{
@@ -230,32 +230,16 @@ body{
   cursor:pointer;
 }
 
-.deleteBtn{
-  position:absolute;
-  top:8px;
-  right:8px;
-  border:0;
-  background:transparent;
-  color:var(--ink);
-  font-size:14px;
-  text-transform:uppercase;
-  letter-spacing:0.6px;
-  cursor:pointer;
-}
-
+.deleteBtn,
 .dupBtn{
   border:0;
   background:transparent;
-  color:var(--ink);
-  font-size:12px;
+  color:var(--bg);
+  font-size:11px;
   text-transform:uppercase;
   letter-spacing:0.6px;
   cursor:pointer;
-}
-
-.deleteBtn:disabled{
-  opacity:0.35;
-  cursor:not-allowed;
+  padding:0;
 }
 
 .panel{
