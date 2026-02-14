@@ -389,8 +389,12 @@
       dupBtn.textContent = "Duplicate";
       dupBtn.addEventListener("click", () => {
         const target = (() => {
-          for (let t = state.activeTracks.length - 1; t >= 0; t--) {
-            if (!state.activeTracks[t] && t !== i) return t;
+          const n = state.activeTracks.length;
+          for (let t = i + 1; t < n; t++) {
+            if (!state.activeTracks[t]) return t;
+          }
+          for (let t = 0; t < i; t++) {
+            if (!state.activeTracks[t]) return t;
           }
           return -1;
         })();
