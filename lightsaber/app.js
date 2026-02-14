@@ -366,7 +366,7 @@
       });
 
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "deleteBtn actionBtn";
+      deleteBtn.className = "deleteBtn linkBtn";
       deleteBtn.type = "button";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
@@ -384,7 +384,7 @@
       });
 
       const dupBtn = document.createElement("button");
-      dupBtn.className = "dupBtn actionBtn";
+      dupBtn.className = "dupBtn linkBtn";
       dupBtn.type = "button";
       dupBtn.textContent = "Duplicate";
       dupBtn.addEventListener("click", () => {

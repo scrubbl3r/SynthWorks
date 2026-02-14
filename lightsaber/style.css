@@ -161,15 +161,16 @@ body{
   width:100%;
 }
 
-.voiceToggles .actionBtn{
-  background:var(--bg);
-  color:var(--ink);
-  border:1px solid var(--ink);
-  padding:6px 8px;
-  justify-content:center;
+.voiceToggles .linkBtn{
+  background:transparent;
+  border:0;
+  color:var(--bg);
+  padding:0;
+  justify-content:flex-start;
+  cursor:pointer;
 }
 
-.voiceToggles .actionBtn:active{
+.voiceToggles .linkBtn:active{
   transform:translateY(1px);
 }
 
