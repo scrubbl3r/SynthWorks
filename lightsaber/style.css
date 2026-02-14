@@ -95,6 +95,9 @@ body{
 
 .regen{
   height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   padding:0 18px;
   border:0;
   background:var(--accent);
@@ -103,7 +106,7 @@ body{
   text-transform:uppercase;
   letter-spacing:1px;
   cursor:pointer;
-  outline: var(--stroke) solid #000;
+  outline: var(--stroke) solid var(--ink);
   outline-offset: calc(-1 * var(--stroke));
 }
 .regen:active{ transform:translateY(1px); }
