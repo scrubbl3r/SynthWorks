@@ -32,9 +32,13 @@
     { key: "bassRes", label: "Bass Resonance" },
     { key: "bassDrive", label: "Bass Drive" },
     { key: "bassLfoPitch", label: "Bass Pitch LFO" },
+    { key: "bassLfoPitchRate", label: "Bass Pitch LFO Rate" },
     { key: "bassLfoLPF", label: "Bass LPF LFO" },
+    { key: "bassLfoLPFRate", label: "Bass LPF LFO Rate" },
     { key: "bassLfoRes", label: "Bass Res LFO" },
+    { key: "bassLfoResRate", label: "Bass Res LFO Rate" },
     { key: "bassLfoDrive", label: "Bass Drive LFO" },
+    { key: "bassLfoDriveRate", label: "Bass Drive LFO Rate" },
     { key: "bassDrift", label: "Bass Drift" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
@@ -78,9 +82,13 @@
     bassRes: +RNG.range(0.4, 3.0).toFixed(1),
     bassDrive: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoPitch: +RNG.range(0.0, 0.6).toFixed(2),
+    bassLfoPitchRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoLPF: +RNG.range(0.0, 0.6).toFixed(2),
+    bassLfoLPFRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoRes: +RNG.range(0.0, 0.6).toFixed(2),
+    bassLfoResRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoDrive: +RNG.range(0.0, 0.6).toFixed(2),
+    bassLfoDriveRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
     stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
     spatialize: +RNG.range(0.0, 0.8).toFixed(2),
@@ -351,17 +359,20 @@
       bassDrive.setAmount(clamp01(p.bassDrive));
 
       const drift = clamp01(p.bassDrift);
-      const lfoRate = lerp(0.02, 6.0, drift);
+      const ratePitch = lerp(0.02, 6.0, clamp01(p.bassLfoPitchRate));
+      const rateLPF = lerp(0.02, 6.0, clamp01(p.bassLfoLPFRate));
+      const rateRes = lerp(0.02, 6.0, clamp01(p.bassLfoResRate));
+      const rateDrive = lerp(0.02, 6.0, clamp01(p.bassLfoDriveRate));
 
-      bassLfoPitch.frequency.setTargetAtTime(lfoRate, t, 0.2);
-      bassLfoLPF.frequency.setTargetAtTime(lfoRate, t, 0.2);
-      bassLfoRes.frequency.setTargetAtTime(lfoRate, t, 0.2);
-      bassLfoDrive.frequency.setTargetAtTime(lfoRate, t, 0.2);
+      bassLfoPitch.frequency.setTargetAtTime(ratePitch, t, 0.2);
+      bassLfoLPF.frequency.setTargetAtTime(rateLPF, t, 0.2);
+      bassLfoRes.frequency.setTargetAtTime(rateRes, t, 0.2);
+      bassLfoDrive.frequency.setTargetAtTime(rateDrive, t, 0.2);
 
-      bassLfoPitchGain.gain.setTargetAtTime(lerp(0, 6, clamp01(p.bassLfoPitch)), t, 0.2);
-      bassLfoLPFGain.gain.setTargetAtTime(lerp(0, 220, clamp01(p.bassLfoLPF)), t, 0.2);
-      bassLfoResGain.gain.setTargetAtTime(lerp(0, 1.6, clamp01(p.bassLfoRes)), t, 0.2);
-      bassLfoDriveGain.gain.setTargetAtTime(lerp(0, 0.6, clamp01(p.bassLfoDrive)), t, 0.2);
+      bassLfoPitchGain.gain.setTargetAtTime(lerp(0, 6, clamp01(p.bassLfoPitch)) * (0.5 + drift * 0.5), t, 0.2);
+      bassLfoLPFGain.gain.setTargetAtTime(lerp(0, 220, clamp01(p.bassLfoLPF)) * (0.5 + drift * 0.5), t, 0.2);
+      bassLfoResGain.gain.setTargetAtTime(lerp(0, 1.6, clamp01(p.bassLfoRes)) * (0.5 + drift * 0.5), t, 0.2);
+      bassLfoDriveGain.gain.setTargetAtTime(lerp(0, 0.6, clamp01(p.bassLfoDrive)) * (0.5 + drift * 0.5), t, 0.2);
 
       applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
     }
@@ -631,9 +642,13 @@
     if (key === "bassRes") return value.toFixed(1);
     if (key === "bassDrive") return value.toFixed(2);
     if (key === "bassLfoPitch") return value.toFixed(2);
+    if (key === "bassLfoPitchRate") return value.toFixed(2);
     if (key === "bassLfoLPF") return value.toFixed(2);
+    if (key === "bassLfoLPFRate") return value.toFixed(2);
     if (key === "bassLfoRes") return value.toFixed(2);
+    if (key === "bassLfoResRate") return value.toFixed(2);
     if (key === "bassLfoDrive") return value.toFixed(2);
+    if (key === "bassLfoDriveRate") return value.toFixed(2);
     if (key === "bassDrift") return value.toFixed(2);
     if (key === "filterCutoff") return `${Math.round(value)} Hz`;
     if (key === "detune") return `${Math.round(value)} ct`;
