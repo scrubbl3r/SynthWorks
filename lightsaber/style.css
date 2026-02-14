@@ -154,7 +154,7 @@ body{
   flex-direction:column;
   gap:8px;
   font-size:11px;
-  margin-left:40px;
+  margin-left:25px;
 }
 
 .voiceToggles label,
