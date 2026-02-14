@@ -150,6 +150,29 @@ body{
   font-size:11px;
 }
 
+.voiceToggles label,
+.voiceToggles button{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  font-size:11px;
+  width:100%;
+}
+
+.voiceToggles .actionBtn{
+  background:var(--bg);
+  color:var(--ink);
+  border:1px solid var(--ink);
+  padding:6px 8px;
+  justify-content:center;
+}
+
+.voiceToggles .actionBtn:active{
+  transform:translateY(1px);
+}
+
 .voiceToggles label{
   display:flex;
   align-items:center;
