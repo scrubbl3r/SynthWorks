@@ -39,7 +39,7 @@
           </select>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Oscillator</span>
           <div class="rowInline">
             <select data-param="oscType">
@@ -56,7 +56,7 @@
           <output data-out="singleOsc"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Unison Spread</span>
           <input type="range" min="0" max="0.02" step="0.0001" data-param="unisonSpread" />
           <output data-out="unisonSpread"></output>
@@ -74,19 +74,19 @@
           <output data-out="pwm"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Osc Rate</span>
           <input type="range" min="0.5" max="2.5" step="0.01" data-param="oscRate" />
           <output data-out="oscRate"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Base Pitch</span>
           <input type="range" min="60" max="240" step="1" data-param="baseHz" />
           <output data-out="baseHz"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Detune</span>
           <input type="range" min="0" max="60" step="1" data-param="detune" />
           <output data-out="detune"></output>
@@ -94,10 +94,52 @@
 
 
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Sub Mix</span>
           <input type="range" min="0" max="0.8" step="0.01" data-param="subMix" />
           <output data-out="subMix"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Bass Pitch</span>
+          <input type="range" min="30" max="160" step="1" data-param="bassHz" />
+          <output data-out="bassHz"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Bass LPF</span>
+          <input type="range" min="60" max="800" step="1" data-param="bassLP" />
+          <output data-out="bassLP"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Bass Resonance</span>
+          <input type="range" min="0.2" max="8" step="0.1" data-param="bassRes" />
+          <output data-out="bassRes"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Bass Drive</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="bassDrive" />
+          <output data-out="bassDrive"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Attack</span>
+          <input type="range" min="0.01" max="1.2" step="0.01" data-param="bassAttack" />
+          <output data-out="bassAttack"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Release</span>
+          <input type="range" min="0.01" max="1.8" step="0.01" data-param="bassRelease" />
+          <output data-out="bassRelease"></output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Drift</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="bassDrift" />
+          <output data-out="bassDrift"></output>
         </label>
 
         <label class="row" data-mode="texture">
@@ -106,13 +148,13 @@
           <output data-out="noiseMix"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Filter Cutoff</span>
           <input type="range" min="200" max="5000" step="1" data-param="filterCutoff" />
           <output data-out="filterCutoff"></output>
         </label>
 
-        <label class="row" data-mode="all">
+        <label class="row" data-mode="texture">
           <span>Filter Resonance</span>
           <input type="range" min="0.2" max="12" step="0.1" data-param="filterQ" />
           <output data-out="filterQ"></output>

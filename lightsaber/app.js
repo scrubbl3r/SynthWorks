@@ -27,6 +27,13 @@
     { key: "filterQ", label: "Filter Resonance" },
     { key: "edge", label: "Bandpass Edge" },
     { key: "drive", label: "Drive" },
+    { key: "bassHz", label: "Bass Pitch" },
+    { key: "bassLP", label: "Bass LPF" },
+    { key: "bassRes", label: "Bass Resonance" },
+    { key: "bassDrive", label: "Bass Drive" },
+    { key: "bassAttack", label: "Bass Attack" },
+    { key: "bassRelease", label: "Bass Release" },
+    { key: "bassDrift", label: "Bass Drift" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
@@ -64,6 +71,13 @@
     filterQ: +RNG.range(0.5, 8.0).toFixed(1),
     edge: +RNG.range(0.0, 0.7).toFixed(2),
     drive: +RNG.range(0.1, 0.8).toFixed(2),
+    bassHz: Math.round(RNG.range(40, 120)),
+    bassLP: Math.round(RNG.range(90, 300)),
+    bassRes: +RNG.range(0.4, 3.0).toFixed(1),
+    bassDrive: +RNG.range(0.0, 0.6).toFixed(2),
+    bassAttack: +RNG.range(0.08, 0.5).toFixed(2),
+    bassRelease: +RNG.range(0.2, 0.8).toFixed(2),
+    bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
     stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
     spatialize: +RNG.range(0.0, 0.8).toFixed(2),
     gain: +RNG.range(0.25, 0.7).toFixed(2)
@@ -136,23 +150,31 @@
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
+    const bassOsc = ctx.createOscillator();
 
     const gA = ctx.createGain();
     const gB = ctx.createGain();
     const gSub = ctx.createGain();
+    const bassGain = ctx.createGain();
 
     gA.gain.value = 0.5;
     gB.gain.value = 0.45;
     gSub.gain.value = 0.4;
+    bassGain.gain.value = 0.0;
 
     oscA.connect(gA);
     oscB.connect(gB);
     oscSub.connect(gSub);
+    bassOsc.connect(bassGain);
 
     const mix = ctx.createGain();
     gA.connect(mix);
     gB.connect(mix);
     gSub.connect(mix);
+
+    const mainGain = ctx.createGain();
+    mainGain.gain.value = 1.0;
+    mix.connect(mainGain);
 
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuf;
@@ -208,24 +230,47 @@
       spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
     });
 
-    mix.connect(filter);
+    mainGain.connect(filter);
     filter.connect(drive.input);
     drive.output.connect(gain);
 
-    mix.connect(edgeBP);
+    mainGain.connect(edgeBP);
     edgeBP.connect(edgeGain);
     edgeGain.connect(drive.input);
 
     gain.connect(panner);
     panner.connect(master);
 
+    const bassDrive = makeDrive(ctx);
+    const bassLP = ctx.createBiquadFilter();
+    bassLP.type = "lowpass";
+    bassLP.frequency.value = 140;
+    bassLP.Q.value = 0.7;
+
+    const bassLfo = ctx.createOscillator();
+    bassLfo.type = "sine";
+    bassLfo.frequency.value = 0.05;
+    const bassLfoGain = ctx.createGain();
+    bassLfoGain.gain.value = 0;
+    bassLfo.connect(bassLfoGain);
+    bassLfoGain.connect(bassOsc.detune);
+
+    bassOsc.type = "sine";
+    bassGain.connect(bassDrive.input);
+    bassDrive.output.connect(bassLP);
+    bassLP.connect(panner);
+
+    bassLfo.start();
+
     oscA.start();
     oscB.start();
     oscSub.start();
+    bassOsc.start();
     noise.start();
 
     function apply(p, muted, width, basePan) {
       const t = ctx.currentTime;
+      const isBass = p.mode === "bass";
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -263,7 +308,25 @@
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
-      applySpatialization(p.spatialize, muted);
+      const mainTarget = isBass ? 0 : 1;
+      mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
+
+      const bassTarget = muted ? 0 : p.gain;
+      const atk = clamp(p.bassAttack, 0.01, 1.2);
+      const rel = clamp(p.bassRelease, 0.01, 1.8);
+      const bassTime = bassTarget >= bassGain.gain.value ? atk : rel;
+      bassGain.gain.setTargetAtTime(isBass ? bassTarget : 0, t, bassTime);
+
+      bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
+      bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
+      bassLP.Q.setTargetAtTime(clamp(p.bassRes, 0.2, 8), t, 0.08);
+      bassDrive.setAmount(clamp01(p.bassDrive));
+
+      const drift = clamp01(p.bassDrift);
+      bassLfo.frequency.setTargetAtTime(lerp(0.02, 0.16, drift), t, 0.2);
+      bassLfoGain.gain.setTargetAtTime(lerp(0, 18, drift), t, 0.2);
+
+      applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
     }
 
     let lastSpatialize = -1;
@@ -526,6 +589,13 @@
   function formatValue(key, value) {
     if (key === "mode") return value;
     if (key === "baseHz") return `${Math.round(value)} Hz`;
+    if (key === "bassHz") return `${Math.round(value)} Hz`;
+    if (key === "bassLP") return `${Math.round(value)} Hz`;
+    if (key === "bassRes") return value.toFixed(1);
+    if (key === "bassDrive") return value.toFixed(2);
+    if (key === "bassAttack") return value.toFixed(2) + "s";
+    if (key === "bassRelease") return value.toFixed(2) + "s";
+    if (key === "bassDrift") return value.toFixed(2);
     if (key === "filterCutoff") return `${Math.round(value)} Hz`;
     if (key === "detune") return `${Math.round(value)} ct`;
     if (key === "filterQ") return value.toFixed(1);
