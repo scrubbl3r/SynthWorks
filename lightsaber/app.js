@@ -350,29 +350,38 @@
       const mainTarget = isBass ? 0 : 1;
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
 
-      const bassTarget = muted ? 0 : p.gain;
-      bassGain.gain.setTargetAtTime(isBass ? bassTarget : 0, t, 0.08);
+      if (isBass) {
+        const bassTarget = muted ? 0 : p.gain;
+        bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
 
-      bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
-      bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
-      bassLP.Q.setTargetAtTime(clamp(p.bassRes, 0.2, 8), t, 0.08);
-      bassDrive.setAmount(clamp01(p.bassDrive));
+        bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
+        bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
+        bassLP.Q.setTargetAtTime(clamp(p.bassRes, 0.2, 8), t, 0.08);
+        bassDrive.setAmount(clamp01(p.bassDrive));
 
-      const drift = clamp01(p.bassDrift);
-      const ratePitch = lerp(0.02, 6.0, clamp01(p.bassLfoPitchRate));
-      const rateLPF = lerp(0.02, 6.0, clamp01(p.bassLfoLPFRate));
-      const rateRes = lerp(0.02, 6.0, clamp01(p.bassLfoResRate));
-      const rateDrive = lerp(0.02, 6.0, clamp01(p.bassLfoDriveRate));
+        const drift = clamp01(p.bassDrift);
+        const ratePitch = lerp(0.02, 6.0, clamp01(p.bassLfoPitchRate));
+        const rateLPF = lerp(0.02, 6.0, clamp01(p.bassLfoLPFRate));
+        const rateRes = lerp(0.02, 6.0, clamp01(p.bassLfoResRate));
+        const rateDrive = lerp(0.02, 6.0, clamp01(p.bassLfoDriveRate));
 
-      bassLfoPitch.frequency.setTargetAtTime(ratePitch, t, 0.2);
-      bassLfoLPF.frequency.setTargetAtTime(rateLPF, t, 0.2);
-      bassLfoRes.frequency.setTargetAtTime(rateRes, t, 0.2);
-      bassLfoDrive.frequency.setTargetAtTime(rateDrive, t, 0.2);
+        bassLfoPitch.frequency.setTargetAtTime(ratePitch, t, 0.2);
+        bassLfoLPF.frequency.setTargetAtTime(rateLPF, t, 0.2);
+        bassLfoRes.frequency.setTargetAtTime(rateRes, t, 0.2);
+        bassLfoDrive.frequency.setTargetAtTime(rateDrive, t, 0.2);
 
-      bassLfoPitchGain.gain.setTargetAtTime(lerp(0, 6, clamp01(p.bassLfoPitch)) * (0.5 + drift * 0.5), t, 0.2);
-      bassLfoLPFGain.gain.setTargetAtTime(lerp(0, 220, clamp01(p.bassLfoLPF)) * (0.5 + drift * 0.5), t, 0.2);
-      bassLfoResGain.gain.setTargetAtTime(lerp(0, 1.6, clamp01(p.bassLfoRes)) * (0.5 + drift * 0.5), t, 0.2);
-      bassLfoDriveGain.gain.setTargetAtTime(lerp(0, 0.6, clamp01(p.bassLfoDrive)) * (0.5 + drift * 0.5), t, 0.2);
+        bassLfoPitchGain.gain.setTargetAtTime(lerp(0, 6, clamp01(p.bassLfoPitch)) * (0.5 + drift * 0.5), t, 0.2);
+        bassLfoLPFGain.gain.setTargetAtTime(lerp(0, 220, clamp01(p.bassLfoLPF)) * (0.5 + drift * 0.5), t, 0.2);
+        bassLfoResGain.gain.setTargetAtTime(lerp(0, 1.6, clamp01(p.bassLfoRes)) * (0.5 + drift * 0.5), t, 0.2);
+        bassLfoDriveGain.gain.setTargetAtTime(lerp(0, 0.6, clamp01(p.bassLfoDrive)) * (0.5 + drift * 0.5), t, 0.2);
+      } else {
+        bassGain.gain.setTargetAtTime(0, t, 0.05);
+        bassDrive.setAmount(0);
+        bassLfoPitchGain.gain.setTargetAtTime(0, t, 0.05);
+        bassLfoLPFGain.gain.setTargetAtTime(0, t, 0.05);
+        bassLfoResGain.gain.setTargetAtTime(0, t, 0.05);
+        bassLfoDriveGain.gain.setTargetAtTime(0, t, 0.05);
+      }
 
       applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
     }
