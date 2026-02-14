@@ -205,21 +205,13 @@ body{
 }
 
 .dupBtn{
-  position:absolute;
-  top:8px;
-  left:8px;
   border:0;
   background:transparent;
   color:var(--ink);
-  font-size:14px;
+  font-size:12px;
   text-transform:uppercase;
   letter-spacing:0.6px;
   cursor:pointer;
-}
-
-.dupBtn:disabled{
-  opacity:0.35;
-  cursor:not-allowed;
 }
 
 .deleteBtn:disabled{

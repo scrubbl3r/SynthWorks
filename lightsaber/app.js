@@ -335,9 +335,13 @@
       dupBtn.className = "dupBtn";
       dupBtn.type = "button";
       dupBtn.textContent = "Duplicate";
-      dupBtn.disabled = !isEnabled || state.activeTracks.every((v, idx) => v || idx === i);
       dupBtn.addEventListener("click", () => {
-        const target = state.activeTracks.findIndex((v, idx) => !v && idx !== i);
+        const target = (() => {
+          for (let t = state.activeTracks.length - 1; t >= 0; t--) {
+            if (!state.activeTracks[t] && t !== i) return t;
+          }
+          return -1;
+        })();
         if (target === -1) return;
         state.activeTracks[target] = true;
         state.muted[target] = false;
@@ -385,7 +389,6 @@
         });
         card.appendChild(title);
         card.appendChild(deleteBtn);
-        card.appendChild(dupBtn);
         card.appendChild(addBtn);
         voiceGrid.appendChild(card);
         continue;
@@ -434,10 +437,10 @@
       toggles.appendChild(freezeLabel);
       toggles.appendChild(editLabel);
       toggles.appendChild(muteLabel);
+      toggles.appendChild(dupBtn);
 
       card.appendChild(title);
       card.appendChild(deleteBtn);
-      card.appendChild(dupBtn);
       card.appendChild(toggles);
       voiceGrid.appendChild(card);
     }
