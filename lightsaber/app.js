@@ -81,7 +81,9 @@
     activeTracks: [true, false, false, false, false],
     active: 0,
     ready: false,
-    playing: true
+    playing: true,
+    soloIndex: null,
+    preSoloMuted: [false, true, true, true, true]
   };
 
   function ensureAudio() {
@@ -439,11 +441,41 @@
       muteBox.checked = state.muted[i];
       muteBox.addEventListener("change", () => {
         state.muted[i] = muteBox.checked;
+        if (state.soloIndex === i && state.muted[i]) {
+          state.soloIndex = null;
+          state.muted = state.preSoloMuted.slice();
+        }
         state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
         renderVoices();
       });
       muteLabel.appendChild(muteBox);
       muteLabel.appendChild(document.createTextNode("Mute"));
+
+      const soloLabel = document.createElement("label");
+      const soloBox = document.createElement("input");
+      soloBox.type = "checkbox";
+      soloBox.checked = state.soloIndex === i;
+      soloBox.addEventListener("change", () => {
+        if (soloBox.checked) {
+          state.soloIndex = i;
+          state.muted[i] = false;
+          state.preSoloMuted = state.muted.slice();
+          for (let t = 0; t < state.muted.length; t++) {
+            state.muted[t] = t === i ? false : true;
+            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
+          }
+        } else {
+          state.soloIndex = null;
+          state.muted = state.preSoloMuted.slice();
+          for (let t = 0; t < state.muted.length; t++) {
+            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
+          }
+        }
+        renderVoices();
+        syncControls();
+      });
+      soloLabel.appendChild(soloBox);
+      soloLabel.appendChild(document.createTextNode("Solo"));
 
       if (!isActive) {
         const editTag = document.createElement("div");
@@ -458,6 +490,7 @@
       toggles.appendChild(dupBtn);
       toggles.appendChild(freezeLabel);
       toggles.appendChild(muteLabel);
+      toggles.appendChild(soloLabel);
 
       card.appendChild(title);
       card.appendChild(toggles);
