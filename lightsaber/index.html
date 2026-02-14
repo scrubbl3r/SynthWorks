@@ -33,17 +33,18 @@
       <div class="controls" id="controls">
         <label class="row">
           <span>Oscillator</span>
-          <select data-param="oscType">
-            <option value="sawtooth">Saw</option>
-            <option value="square">Square</option>
-            <option value="triangle">Triangle</option>
-            <option value="sine">Sine</option>
-          </select>
-        </label>
-
-        <label class="row">
-          <span>Single Osc</span>
-          <input type="checkbox" data-param="singleOsc" />
+          <div class="rowInline">
+            <select data-param="oscType">
+              <option value="sawtooth">Saw</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+              <option value="sine">Sine</option>
+            </select>
+            <label class="inlineToggle">
+              <input type="checkbox" data-param="singleOsc" />
+              <span>Single</span>
+            </label>
+          </div>
           <output data-out="singleOsc"></output>
         </label>
 
@@ -79,7 +80,7 @@
 
         <label class="row">
           <span>Detune</span>
-          <input type="range" min="0" max="30" step="1" data-param="detune" />
+          <input type="range" min="0" max="60" step="1" data-param="detune" />
           <output data-out="detune"></output>
         </label>
 
