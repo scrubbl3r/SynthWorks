@@ -129,7 +129,7 @@ body{
   position:relative;
   min-height:160px;
   padding:12px 10px 10px;
-  background:#0f0c25;
+  background:var(--panel);
   color:var(--ink);
   border-right:var(--stroke) solid #000;
 }
@@ -201,6 +201,7 @@ body{
   flex-direction:column;
   align-items:stretch;
   justify-content:flex-start;
+  background:#0f0c25;
   color:rgba(255,59,24,0.75);
 }
 
