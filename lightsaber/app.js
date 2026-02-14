@@ -12,6 +12,8 @@
 
   const PARAMS = [
     { key: "oscType", label: "Oscillator" },
+    { key: "singleOsc", label: "Single Osc" },
+    { key: "unisonSpread", label: "Unison Spread" },
     { key: "pwmOn", label: "PWM On" },
     { key: "pwm", label: "PWM" },
     { key: "oscRate", label: "Osc Rate" },
@@ -23,6 +25,7 @@
     { key: "filterQ", label: "Filter Resonance" },
     { key: "edge", label: "Bandpass Edge" },
     { key: "drive", label: "Drive" },
+    { key: "staticVoice", label: "Static Voice" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
@@ -46,17 +49,20 @@
 
   const defaults = () => ({
     oscType: RNG.pick(["sawtooth", "square", "triangle"]),
+    singleOsc: false,
+    unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
     pwmOn: true,
     pwm: +RNG.range(0.08, 0.92).toFixed(2),
     oscRate: +RNG.range(0.7, 1.6).toFixed(2),
     baseHz: Math.round(RNG.range(70, 190)),
     detune: Math.round(RNG.range(0, 24)),
     subMix: +RNG.range(0.12, 0.55).toFixed(2),
-    noiseMix: +RNG.range(0.04, 0.45).toFixed(2),
+    noiseMix: 0,
     filterCutoff: Math.round(RNG.range(400, 2800)),
     filterQ: +RNG.range(0.5, 8.0).toFixed(1),
     edge: +RNG.range(0.0, 0.7).toFixed(2),
     drive: +RNG.range(0.1, 0.8).toFixed(2),
+    staticVoice: false,
     stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
     spatialize: +RNG.range(0.0, 0.8).toFixed(2),
     gain: +RNG.range(0.25, 0.7).toFixed(2)
@@ -227,27 +233,41 @@
       }
       oscSub.type = "triangle";
 
-      oscA.frequency.setTargetAtTime(base, t, 0.03);
-      oscB.frequency.setTargetAtTime(base * 1.01, t, 0.03);
+      const spread = p.singleOsc ? 0 : clamp(p.unisonSpread, 0, 0.02);
+      const baseA = base * (1 - spread * 0.5);
+      const baseB = base * (1 + spread * 0.5);
+      oscA.frequency.setTargetAtTime(baseA, t, 0.03);
+      oscB.frequency.setTargetAtTime(baseB, t, 0.03);
       oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
 
-      oscB.detune.setTargetAtTime(p.detune * 2, t, 0.04);
+      oscB.detune.setTargetAtTime(p.singleOsc ? 0 : p.detune * 2, t, 0.04);
+      gB.gain.setTargetAtTime(p.singleOsc ? 0 : 0.45, t, 0.04);
 
       gSub.gain.setTargetAtTime(p.subMix, t, 0.03);
       noiseG.gain.setTargetAtTime(p.noiseMix, t, 0.03);
 
-      filter.frequency.setTargetAtTime(p.filterCutoff, t, 0.04);
-      filter.Q.setTargetAtTime(p.filterQ, t, 0.04);
+      const glide = p.staticVoice ? 0.4 : 0.04;
+      const detuneScale = p.staticVoice ? 0.15 : 1;
+      const edgeScale = p.staticVoice ? 0.2 : 1;
+      const noiseScale = p.staticVoice ? 0.0 : 1;
+      filter.frequency.setTargetAtTime(p.filterCutoff, t, glide);
+      filter.Q.setTargetAtTime(p.filterQ, t, glide);
 
       edgeBP.frequency.setTargetAtTime(p.filterCutoff * 1.4, t, 0.04);
       edgeBP.Q.setTargetAtTime(p.filterQ * 1.3, t, 0.04);
-      edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
+      edgeGain.gain.setTargetAtTime(p.edge * edgeScale, t, 0.04);
 
       drive.setAmount(p.drive);
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
-      applySpatialization(p.spatialize, muted);
+      if (p.staticVoice) {
+        oscB.detune.setTargetAtTime(p.singleOsc ? 0 : p.detune * 2 * detuneScale, t, glide);
+        noiseG.gain.setTargetAtTime(p.noiseMix * noiseScale, t, glide);
+        applySpatialization(0, muted);
+      } else {
+        applySpatialization(p.spatialize, muted);
+      }
     }
 
     let lastSpatialize = -1;
@@ -393,9 +413,12 @@
     if (key === "pwm") return value.toFixed(2);
     if (key === "pwmOn") return value ? "On" : "Off";
     if (key === "oscRate") return value.toFixed(2) + "x";
+    if (key === "singleOsc") return value ? "On" : "Off";
+    if (key === "unisonSpread") return value.toFixed(4);
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
     if (key === "spatialize") return value.toFixed(2);
+    if (key === "staticVoice") return value ? "On" : "Off";
     if (key === "oscType") return value;
     return Number(value).toFixed(2);
   }
