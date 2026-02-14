@@ -470,10 +470,10 @@
     state.voices = [];
     for (let i = 0; i < 5; i++) {
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
-      const p = defaults();
-      p.gain = 0.5;
-      p.stereoWidth = 0.5;
-      p.spatialize = 0.5;
+      const p = state.voiceParams[i] || defaults();
+      if (p.gain == null) p.gain = 0.5;
+      if (p.stereoWidth == null) p.stereoWidth = 0.5;
+      if (p.spatialize == null) p.spatialize = 0.5;
       state.voiceParams[i] = p;
       if (!state.activeTracks[i]) state.muted[i] = true;
       state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
@@ -803,7 +803,9 @@
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
-      state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+      if (state.voices[i]) {
+        state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+      }
     }
     renderVoices();
     syncControls();
