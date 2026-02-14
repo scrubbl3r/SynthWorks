@@ -246,7 +246,7 @@
       oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2 * detuneScale, t, 0.04);
       gB.gain.setTargetAtTime(isSingle ? 0 : 0.45, t, 0.04);
 
-      gSub.gain.setTargetAtTime(p.subMix, t, 0.03);
+      gSub.gain.setTargetAtTime(isSingle ? 0 : p.subMix, t, 0.03);
       const noiseScale = isStatic ? 0.0 : 1;
       noiseG.gain.setTargetAtTime(p.noiseMix * noiseScale, t, 0.03);
 
@@ -259,7 +259,7 @@
       edgeBP.Q.setTargetAtTime(p.filterQ * 1.3, t, 0.04);
       edgeGain.gain.setTargetAtTime(p.edge * edgeScale, t, 0.04);
 
-      drive.setAmount(p.drive);
+      drive.setAmount(isStatic ? Math.min(p.drive, 0.25) : p.drive);
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
@@ -420,7 +420,7 @@
   }
 
   function attachControlHandlers() {
-    controls.addEventListener("input", (e) => {
+    const onControlChange = (e) => {
       const target = e.target;
       if (!target || !target.dataset || !target.dataset.param) return;
       startAudio();
@@ -439,7 +439,10 @@
       if (out) out.textContent = formatValue(key, p[key]);
 
       state.voices[state.active].apply(p, state.muted[state.active], p.stereoWidth, basePanFor(state.active));
-    });
+    };
+
+    controls.addEventListener("input", onControlChange);
+    controls.addEventListener("change", onControlChange);
   }
 
   async function startAudio() {
