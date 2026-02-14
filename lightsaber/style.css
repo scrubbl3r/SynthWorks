@@ -99,7 +99,7 @@ body{
   border:0;
   border-left:var(--stroke) solid var(--ink);
   background:var(--accent);
-  color:var(--accent-ink);
+  color:var(--panel);
   font-weight:900;
   text-transform:uppercase;
   letter-spacing:0.9px;
@@ -191,6 +191,13 @@ body{
 .voiceCard.active{
   background:var(--accent);
   color:var(--accent-ink);
+}
+.voiceCard.active .voiceTitle{
+  color:var(--panel);
+}
+.voiceCard.active .voiceToggles label,
+.voiceCard.active .voiceToggles button{
+  color:var(--panel);
 }
 
 .voiceCard.frozen{
