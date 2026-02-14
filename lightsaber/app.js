@@ -102,9 +102,9 @@
     bassLfoDrive: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoDriveRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
-    stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
-    spatialize: +RNG.range(0.0, 0.8).toFixed(2),
-    gain: +RNG.range(0.25, 0.7).toFixed(2)
+    stereoWidth: 0.5,
+    spatialize: 0.5,
+    gain: 0.5
   });
 
   function randomizeVoice(p) {
@@ -470,7 +470,11 @@
     state.voices = [];
     for (let i = 0; i < 5; i++) {
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
-      state.voiceParams[i] = defaults();
+      const p = defaults();
+      p.gain = 0.5;
+      p.stereoWidth = 0.5;
+      p.spatialize = 0.5;
+      state.voiceParams[i] = p;
       if (!state.activeTracks[i]) state.muted[i] = true;
       state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
     }
@@ -514,7 +518,11 @@
           state.activeTracks[i] = true;
           state.muted[i] = false;
           state.frozen[i] = false;
-          state.voiceParams[i] = defaults();
+          const p = defaults();
+          p.gain = 0.5;
+          p.stereoWidth = 0.5;
+          p.spatialize = 0.5;
+          state.voiceParams[i] = p;
           state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
           state.active = i;
           renderVoices();
@@ -555,7 +563,11 @@
         state.activeTracks[i] = false;
         state.muted[i] = true;
         state.frozen[i] = false;
-        state.voiceParams[i] = defaults();
+        const p = defaults();
+        p.gain = 0.5;
+        p.stereoWidth = 0.5;
+        p.spatialize = 0.5;
+        state.voiceParams[i] = p;
         state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
         if (state.active === i) {
           state.active = state.activeTracks.findIndex((v) => v);
@@ -782,9 +794,9 @@
       if (state.frozen[i]) continue;
       const p = state.voiceParams[i] || defaults();
       const keep = {
-        gain: p.gain,
-        stereoWidth: p.stereoWidth,
-        spatialize: p.spatialize
+        gain: p.gain ?? 0.5,
+        stereoWidth: p.stereoWidth ?? 0.5,
+        spatialize: p.spatialize ?? 0.5
       };
       randomizeVoice(p);
       p.gain = keep.gain;
@@ -800,7 +812,11 @@
   function init() {
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
-        state.voiceParams[i] = defaults();
+        const p = defaults();
+        p.gain = 0.5;
+        p.stereoWidth = 0.5;
+        p.spatialize = 0.5;
+        state.voiceParams[i] = p;
       }
     }
     renderVoices();
