@@ -23,6 +23,7 @@
     { key: "subMix", label: "Sub Mix" },
     { key: "subBass", label: "Sub Bass" },
     { key: "subBassRatio", label: "Sub Bass Ratio" },
+    { key: "subBassSmooth", label: "Sub Bass Smooth" },
     { key: "noiseMix", label: "Noise Mix" },
     { key: "filterCutoff", label: "Filter Cutoff" },
     { key: "filterQ", label: "Filter Resonance" },
@@ -61,6 +62,7 @@
     subMix: +RNG.range(0.12, 0.55).toFixed(2),
     subBass: +RNG.range(0.0, 0.6).toFixed(2),
     subBassRatio: +RNG.range(0.3, 0.8).toFixed(2),
+    subBassSmooth: +RNG.range(0.25, 0.8).toFixed(2),
     noiseMix: 0,
     filterCutoff: Math.round(RNG.range(400, 2800)),
     filterQ: +RNG.range(0.5, 8.0).toFixed(1),
@@ -159,7 +161,6 @@
     gA.connect(mix);
     gB.connect(mix);
     gSub.connect(mix);
-    gBass.connect(mix);
 
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuf;
@@ -215,6 +216,14 @@
       spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
     });
 
+    const bassLP = ctx.createBiquadFilter();
+    bassLP.type = "lowpass";
+    bassLP.frequency.value = 140;
+    bassLP.Q.value = 0.6;
+
+    gBass.connect(bassLP);
+    bassLP.connect(master);
+
     mix.connect(filter);
     filter.connect(drive.input);
     drive.output.connect(gain);
@@ -254,13 +263,16 @@
       oscA.frequency.setTargetAtTime(baseA, t, 0.03);
       oscB.frequency.setTargetAtTime(baseB, t, 0.03);
       oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
-      oscBass.frequency.setTargetAtTime(base * clamp(p.subBassRatio, 0.25, 1), t, 0.05);
+      const subBase = p.baseHz * clamp(p.subBassRatio, 0.25, 1);
+      oscBass.frequency.setTargetAtTime(subBase, t, 0.12);
 
       oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2, t, 0.04);
       gB.gain.setTargetAtTime(isSingle ? 0 : 0.45, t, 0.04);
 
       gSub.gain.setTargetAtTime(isSingle ? 0 : p.subMix, t, 0.03);
-      gBass.gain.setTargetAtTime(p.subBass, t, 0.05);
+      const smooth = clamp(p.subBassSmooth, 0.05, 1.2);
+      gBass.gain.setTargetAtTime(p.subBass, t, smooth);
+      bassLP.frequency.setTargetAtTime(lerp(90, 240, clamp01(p.subBassRatio)), t, 0.12);
       noiseG.gain.setTargetAtTime(p.noiseMix, t, 0.03);
 
       filter.frequency.setTargetAtTime(p.filterCutoff, t, 0.04);
@@ -545,6 +557,7 @@
     if (key === "unisonSpread") return value.toFixed(4);
     if (key === "subBass") return value.toFixed(2);
     if (key === "subBassRatio") return value.toFixed(2);
+    if (key === "subBassSmooth") return value.toFixed(2) + "s";
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
     if (key === "spatialize") return value.toFixed(2);
