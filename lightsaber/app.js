@@ -26,7 +26,6 @@
     { key: "filterQ", label: "Filter Resonance" },
     { key: "edge", label: "Bandpass Edge" },
     { key: "drive", label: "Drive" },
-    { key: "staticVoice", label: "Static Voice" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
@@ -63,7 +62,6 @@
     filterQ: +RNG.range(0.5, 8.0).toFixed(1),
     edge: +RNG.range(0.0, 0.7).toFixed(2),
     drive: +RNG.range(0.1, 0.8).toFixed(2),
-    staticVoice: false,
     stereoWidth: +RNG.range(0.4, 1.0).toFixed(2),
     spatialize: +RNG.range(0.0, 0.8).toFixed(2),
     gain: +RNG.range(0.25, 0.7).toFixed(2)
@@ -78,7 +76,8 @@
     muted: [false, true, true, true, true],
     activeTracks: [true, false, false, false, false],
     active: 0,
-    ready: false
+    ready: false,
+    playing: true
   };
 
   function ensureAudio() {
@@ -225,9 +224,8 @@
       const t = ctx.currentTime;
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
-      const isStatic = !!p.staticVoice;
-      const isSingle = !!p.singleOsc || isStatic;
-      if (p.oscType === "square" && p.pwmOn && !isStatic) {
+      const isSingle = !!p.singleOsc;
+      if (p.oscType === "square" && p.pwmOn) {
         const wave = makePWMWave(ctx, clamp(p.pwm, 0.05, 0.95));
         oscA.setPeriodicWave(wave);
         oscB.setPeriodicWave(wave);
@@ -244,28 +242,24 @@
       oscB.frequency.setTargetAtTime(baseB, t, 0.03);
       oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
 
-      const detuneScale = isStatic ? 0.0 : 1;
-      oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2 * detuneScale, t, 0.04);
+      oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2, t, 0.04);
       gB.gain.setTargetAtTime(isSingle ? 0 : 0.45, t, 0.04);
 
       gSub.gain.setTargetAtTime(isSingle ? 0 : p.subMix, t, 0.03);
-      const noiseScale = isStatic ? 0.0 : 1;
-      noiseG.gain.setTargetAtTime(p.noiseMix * noiseScale, t, 0.03);
+      noiseG.gain.setTargetAtTime(p.noiseMix, t, 0.03);
 
-      const glide = isStatic ? 0.4 : 0.04;
-      const edgeScale = isStatic ? 0.0 : 1;
-      filter.frequency.setTargetAtTime(p.filterCutoff, t, glide);
-      filter.Q.setTargetAtTime(p.filterQ, t, glide);
+      filter.frequency.setTargetAtTime(p.filterCutoff, t, 0.04);
+      filter.Q.setTargetAtTime(p.filterQ, t, 0.04);
 
       edgeBP.frequency.setTargetAtTime(p.filterCutoff * 1.4, t, 0.04);
       edgeBP.Q.setTargetAtTime(p.filterQ * 1.3, t, 0.04);
-      edgeGain.gain.setTargetAtTime(p.edge * edgeScale, t, 0.04);
+      edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
 
-      drive.setAmount(isStatic ? Math.min(p.drive, 0.25) : p.drive);
+      drive.setAmount(p.drive);
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
-      applySpatialization(isStatic ? 0 : p.spatialize, muted);
+      applySpatialization(p.spatialize, muted);
     }
 
     let lastSpatialize = -1;
@@ -337,6 +331,24 @@
       title.className = "voiceTitle";
       title.textContent = `Voice ${i + 1}`;
 
+      const dupBtn = document.createElement("button");
+      dupBtn.className = "dupBtn";
+      dupBtn.type = "button";
+      dupBtn.textContent = "Duplicate";
+      dupBtn.disabled = !isEnabled || state.activeTracks.every((v, idx) => v || idx === i);
+      dupBtn.addEventListener("click", () => {
+        const target = state.activeTracks.findIndex((v, idx) => !v && idx !== i);
+        if (target === -1) return;
+        state.activeTracks[target] = true;
+        state.muted[target] = false;
+        state.frozen[target] = false;
+        state.voiceParams[target] = JSON.parse(JSON.stringify(state.voiceParams[i]));
+        state.voices[target].apply(state.voiceParams[target], state.muted[target], state.voiceParams[target].stereoWidth, basePanFor(target));
+        state.active = target;
+        renderVoices();
+        syncControls();
+      });
+
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "deleteBtn";
       deleteBtn.type = "button";
@@ -373,6 +385,7 @@
         });
         card.appendChild(title);
         card.appendChild(deleteBtn);
+        card.appendChild(dupBtn);
         card.appendChild(addBtn);
         voiceGrid.appendChild(card);
         continue;
@@ -424,6 +437,7 @@
 
       card.appendChild(title);
       card.appendChild(deleteBtn);
+      card.appendChild(dupBtn);
       card.appendChild(toggles);
       voiceGrid.appendChild(card);
     }
@@ -469,7 +483,6 @@
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
     if (key === "spatialize") return value.toFixed(2);
-    if (key === "staticVoice") return value ? "On" : "Off";
     if (key === "oscType") return value;
     return Number(value).toFixed(2);
   }
@@ -502,6 +515,7 @@
 
   async function startAudio() {
     ensureAudio();
+    if (!state.playing) return;
     if (state.ctx.state !== "running") {
       try { await state.ctx.resume(); } catch (_) {}
     }
@@ -532,11 +546,16 @@
       await startAudio();
       if (!state.ctx) return;
       if (state.ctx.state === "running") {
+        state.playing = false;
+        state.master.gain.setTargetAtTime(0, state.ctx.currentTime, 0.02);
         await state.ctx.suspend();
         playBtn.textContent = "Play";
       } else {
         await state.ctx.resume();
+        state.playing = true;
+        state.master.gain.setTargetAtTime(0.85, state.ctx.currentTime, 0.02);
         playBtn.textContent = "Pause";
+        if (startOverlay) startOverlay.style.display = "none";
       }
     });
   }
