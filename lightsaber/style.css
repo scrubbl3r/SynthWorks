@@ -72,7 +72,7 @@ body{
 .topbar{
   display:flex;
   align-items:center;
-  justify-content:flex-end;
+  justify-content:space-between;
   gap:0;
   border:var(--stroke) solid #000;
   padding:0;
@@ -81,11 +81,21 @@ body{
   margin-bottom:12px;
 }
 
+.zoneTitle{
+  color:var(--ink);
+  font-size:21px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  line-height:1;
+  padding-left:12px;
+}
+
 .topActions{
   display:flex;
   align-items:stretch;
   justify-content:flex-end;
-  width:100%;
+  width:auto;
   gap:0;
 }
 
