@@ -388,7 +388,6 @@
           syncControls();
         });
         card.appendChild(title);
-        card.appendChild(deleteBtn);
         card.appendChild(addBtn);
         voiceGrid.appendChild(card);
         continue;
