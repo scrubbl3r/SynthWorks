@@ -353,25 +353,6 @@
         syncControls();
       });
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "deleteBtn";
-      deleteBtn.type = "button";
-      deleteBtn.textContent = "Delete";
-      deleteBtn.disabled = !isEnabled;
-      deleteBtn.addEventListener("click", () => {
-        state.activeTracks[i] = false;
-        state.muted[i] = true;
-        state.frozen[i] = false;
-        state.voiceParams[i] = defaults();
-        state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
-        if (state.active === i) {
-          state.active = state.activeTracks.findIndex((v) => v);
-          if (state.active === -1) state.active = 0;
-        }
-        renderVoices();
-        syncControls();
-      });
-
       if (!isEnabled) {
         const addBtn = document.createElement("button");
         addBtn.className = "addBtn";
@@ -395,6 +376,24 @@
 
       const toggles = document.createElement("div");
       toggles.className = "voiceToggles";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "deleteBtn";
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        state.activeTracks[i] = false;
+        state.muted[i] = true;
+        state.frozen[i] = false;
+        state.voiceParams[i] = defaults();
+        state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
+        if (state.active === i) {
+          state.active = state.activeTracks.findIndex((v) => v);
+          if (state.active === -1) state.active = 0;
+        }
+        renderVoices();
+        syncControls();
+      });
 
       const freezeLabel = document.createElement("label");
       const freezeBox = document.createElement("input");
