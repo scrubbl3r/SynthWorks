@@ -56,24 +56,6 @@
         </label>
 
         <label class="row" data-mode="texture">
-          <span>Unison Spread</span>
-          <input type="range" min="0" max="0.02" step="0.0001" data-param="unisonSpread" />
-          <output data-out="unisonSpread"></output>
-        </label>
-
-        <label class="row" data-mode="texture">
-          <span>PWM</span>
-          <div class="rowInline">
-            <label class="inlineToggle">
-              <input type="checkbox" data-param="pwmOn" />
-              <span>PWM</span>
-            </label>
-            <input type="range" min="0.05" max="0.95" step="0.01" data-param="pwm" />
-          </div>
-          <output data-out="pwm"></output>
-        </label>
-
-        <label class="row" data-mode="texture">
           <span>Osc Rate</span>
           <input type="range" min="0.5" max="2.5" step="0.01" data-param="oscRate" />
           <output data-out="oscRate"></output>
@@ -86,17 +68,27 @@
         </label>
 
         <label class="row" data-mode="texture">
+          <span>Unison Spread</span>
+          <input type="range" min="0" max="0.02" step="0.0001" data-param="unisonSpread" />
+          <output data-out="unisonSpread"></output>
+        </label>
+
+        <label class="row" data-mode="texture">
           <span>Detune</span>
           <input type="range" min="0" max="60" step="1" data-param="detune" />
           <output data-out="detune"></output>
         </label>
 
-
-
         <label class="row" data-mode="texture">
-          <span>Sub Mix</span>
-          <input type="range" min="0" max="0.8" step="0.01" data-param="subMix" />
-          <output data-out="subMix"></output>
+          <span>PWM</span>
+          <div class="rowInline">
+            <label class="inlineToggle">
+              <input type="checkbox" data-param="pwmOn" />
+              <span>PWM</span>
+            </label>
+            <input type="range" min="0.05" max="0.95" step="0.01" data-param="pwm" />
+          </div>
+          <output data-out="pwm"></output>
         </label>
 
         <label class="row" data-mode="bass">
@@ -178,9 +170,9 @@
         </label>
 
         <label class="row" data-mode="texture">
-          <span>Noise Mix</span>
-          <input type="range" min="0" max="0.6" step="0.01" data-param="noiseMix" value="0" />
-          <output data-out="noiseMix"></output>
+          <span>Drive</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="drive" />
+          <output data-out="drive"></output>
         </label>
 
         <label class="row" data-mode="texture">
@@ -202,9 +194,9 @@
         </label>
 
         <label class="row" data-mode="texture">
-          <span>Drive</span>
-          <input type="range" min="0" max="1" step="0.01" data-param="drive" />
-          <output data-out="drive"></output>
+          <span>Noise Mix</span>
+          <input type="range" min="0" max="0.6" step="0.01" data-param="noiseMix" value="0" />
+          <output data-out="noiseMix"></output>
         </label>
 
         <label class="row" data-mode="all">
@@ -220,7 +212,7 @@
         </label>
 
         <label class="row" data-mode="all">
-          <span>Voice Gain</span>
+          <span>Gain</span>
           <input type="range" min="0" max="0.8" step="0.01" data-param="gain" />
           <output data-out="gain"></output>
         </label>
