@@ -20,10 +20,6 @@
     { key: "oscRate", label: "Osc Rate" },
     { key: "baseHz", label: "Base Pitch" },
     { key: "detune", label: "Detune" },
-    { key: "subMix", label: "Sub Mix" },
-    { key: "subBass", label: "Sub Bass" },
-    { key: "subBassRatio", label: "Sub Bass Ratio" },
-    { key: "subBassSmooth", label: "Sub Bass Smooth" },
     { key: "noiseMix", label: "Noise Mix" },
     { key: "filterCutoff", label: "Filter Cutoff" },
     { key: "filterQ", label: "Filter Resonance" },
@@ -59,10 +55,6 @@
     oscRate: +RNG.range(0.7, 1.6).toFixed(2),
     baseHz: Math.round(RNG.range(70, 190)),
     detune: Math.round(RNG.range(0, 24)),
-    subMix: +RNG.range(0.12, 0.55).toFixed(2),
-    subBass: +RNG.range(0.0, 0.6).toFixed(2),
-    subBassRatio: +RNG.range(0.3, 0.8).toFixed(2),
-    subBassSmooth: +RNG.range(0.25, 0.8).toFixed(2),
     noiseMix: 0,
     filterCutoff: Math.round(RNG.range(400, 2800)),
     filterQ: +RNG.range(0.5, 8.0).toFixed(1),
@@ -140,22 +132,18 @@
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
-    const oscBass = ctx.createOscillator();
 
     const gA = ctx.createGain();
     const gB = ctx.createGain();
     const gSub = ctx.createGain();
-    const gBass = ctx.createGain();
 
     gA.gain.value = 0.5;
     gB.gain.value = 0.45;
     gSub.gain.value = 0.4;
-    gBass.gain.value = 0.0;
 
     oscA.connect(gA);
     oscB.connect(gB);
     oscSub.connect(gSub);
-    oscBass.connect(gBass);
 
     const mix = ctx.createGain();
     gA.connect(mix);
@@ -216,14 +204,6 @@
       spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
     });
 
-    const bassLP = ctx.createBiquadFilter();
-    bassLP.type = "lowpass";
-    bassLP.frequency.value = 140;
-    bassLP.Q.value = 0.6;
-
-    gBass.connect(bassLP);
-    bassLP.connect(master);
-
     mix.connect(filter);
     filter.connect(drive.input);
     drive.output.connect(gain);
@@ -238,7 +218,6 @@
     oscA.start();
     oscB.start();
     oscSub.start();
-    oscBass.start();
     noise.start();
 
     function apply(p, muted, width, basePan) {
@@ -255,7 +234,6 @@
         oscB.type = p.oscType;
       }
       oscSub.type = "triangle";
-      oscBass.type = "sine";
 
       const spread = isSingle ? 0 : clamp(p.unisonSpread, 0, 0.02);
       const baseA = base * (1 - spread * 0.5);
@@ -263,16 +241,11 @@
       oscA.frequency.setTargetAtTime(baseA, t, 0.03);
       oscB.frequency.setTargetAtTime(baseB, t, 0.03);
       oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
-      const subBase = p.baseHz * clamp(p.subBassRatio, 0.25, 1);
-      oscBass.frequency.setTargetAtTime(subBase, t, 0.12);
 
       oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2, t, 0.04);
       gB.gain.setTargetAtTime(isSingle ? 0 : 0.45, t, 0.04);
 
       gSub.gain.setTargetAtTime(isSingle ? 0 : p.subMix, t, 0.03);
-      const smooth = clamp(p.subBassSmooth, 0.05, 1.2);
-      gBass.gain.setTargetAtTime(p.subBass, t, smooth);
-      bassLP.frequency.setTargetAtTime(lerp(90, 240, clamp01(p.subBassRatio)), t, 0.12);
       noiseG.gain.setTargetAtTime(p.noiseMix, t, 0.03);
 
       filter.frequency.setTargetAtTime(p.filterCutoff, t, 0.04);
@@ -555,9 +528,6 @@
     if (key === "oscRate") return value.toFixed(2) + "x";
     if (key === "singleOsc") return value ? "On" : "Off";
     if (key === "unisonSpread") return value.toFixed(4);
-    if (key === "subBass") return value.toFixed(2);
-    if (key === "subBassRatio") return value.toFixed(2);
-    if (key === "subBassSmooth") return value.toFixed(2) + "s";
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
     if (key === "spatialize") return value.toFixed(2);
