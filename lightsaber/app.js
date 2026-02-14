@@ -482,6 +482,70 @@
     }
   }
 
+  function makeDefaultVoice() {
+    const p = defaults();
+    p.gain = 0.5;
+    p.stereoWidth = 0.5;
+    p.spatialize = 0.5;
+    return p;
+  }
+
+  function compactTracksLeft() {
+    const n = state.activeTracks.length;
+    const oldActiveTracks = state.activeTracks.slice();
+    const oldVoiceParams = state.voiceParams.slice();
+    const oldMuted = state.muted.slice();
+    const oldFrozen = state.frozen.slice();
+    const oldPreSoloMuted = state.preSoloMuted.slice();
+    const oldActive = state.active;
+    const oldSolo = state.soloIndex;
+
+    const enabledOld = [];
+    for (let i = 0; i < n; i++) {
+      if (oldActiveTracks[i]) enabledOld.push(i);
+    }
+
+    const oldToNew = new Map();
+    enabledOld.forEach((oldIdx, newIdx) => oldToNew.set(oldIdx, newIdx));
+
+    for (let i = 0; i < n; i++) {
+      if (i < enabledOld.length) {
+        const oldIdx = enabledOld[i];
+        state.activeTracks[i] = true;
+        state.voiceParams[i] = oldVoiceParams[oldIdx] || makeDefaultVoice();
+        state.muted[i] = !!oldMuted[oldIdx];
+        state.frozen[i] = !!oldFrozen[oldIdx];
+      } else {
+        state.activeTracks[i] = false;
+        state.voiceParams[i] = makeDefaultVoice();
+        state.muted[i] = true;
+        state.frozen[i] = false;
+      }
+    }
+
+    state.preSoloMuted = new Array(n).fill(true);
+    for (let i = 0; i < enabledOld.length; i++) {
+      const oldIdx = enabledOld[i];
+      state.preSoloMuted[i] = !!oldPreSoloMuted[oldIdx];
+    }
+
+    if (oldToNew.has(oldActive)) {
+      state.active = oldToNew.get(oldActive);
+    } else {
+      state.active = enabledOld.length ? 0 : 0;
+    }
+
+    if (oldSolo != null && oldToNew.has(oldSolo)) {
+      state.soloIndex = oldToNew.get(oldSolo);
+    } else if (oldSolo != null) {
+      state.soloIndex = null;
+    }
+
+    for (let i = 0; i < n; i++) {
+      state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+    }
+  }
+
   function basePanFor(index) {
     return lerp(-0.8, 0.8, index / 4);
   }
@@ -566,16 +630,9 @@
         state.activeTracks[i] = false;
         state.muted[i] = true;
         state.frozen[i] = false;
-        const p = defaults();
-        p.gain = 0.5;
-        p.stereoWidth = 0.5;
-        p.spatialize = 0.5;
-        state.voiceParams[i] = p;
+        state.voiceParams[i] = makeDefaultVoice();
         state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
-        if (state.active === i) {
-          state.active = state.activeTracks.findIndex((v) => v);
-          if (state.active === -1) state.active = 0;
-        }
+        compactTracksLeft();
         if (deletingSoloTarget) {
           const next = state.activeTracks[state.active]
             ? state.active
