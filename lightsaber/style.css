@@ -72,10 +72,10 @@ body{
 .topbar{
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap:16px;
+  justify-content:flex-end;
+  gap:0;
   border:var(--stroke) solid #000;
-  padding:10px 12px;
+  padding:0;
   background:#0b0820;
   color:var(--ink);
   margin-bottom:12px;
@@ -83,37 +83,33 @@ body{
 
 .topActions{
   display:flex;
-  align-items:center;
-  gap:10px;
-}
-
-.title{
-  font-weight:900;
-  text-transform:uppercase;
-  letter-spacing:1.2px;
+  align-items:stretch;
+  justify-content:flex-end;
+  width:100%;
+  gap:0;
 }
 
 .regen{
-  height:44px;
+  min-width:150px;
+  height:56px;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:0 18px;
+  padding:0;
   border:0;
+  border-left:var(--stroke) solid var(--ink);
   background:var(--accent);
   color:var(--accent-ink);
   font-weight:900;
   text-transform:uppercase;
-  letter-spacing:1px;
+  letter-spacing:0.9px;
   cursor:pointer;
-  outline: var(--stroke) solid var(--ink);
-  outline-offset: calc(-1 * var(--stroke));
+  outline:0;
 }
 .regen:active{ transform:translateY(1px); }
 .regen.ghost{
   background:transparent;
   color:var(--ink);
-  outline: var(--stroke) solid var(--ink);
 }
 
 .voiceStrip{
