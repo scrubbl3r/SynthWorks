@@ -61,6 +61,18 @@
     }
   };
 
+  function skewLow(rng, power = 4) {
+    return Math.pow(clamp01(rng()), power);
+  }
+
+  function skewLowWithSpikes(rng, power = 4, spikeChance = 0.12) {
+    const v = skewLow(rng, power);
+    if (rng() < spikeChance) {
+      return 1 - Math.pow(clamp01(rng()), 1.2);
+    }
+    return v;
+  }
+
   const defaults = () => ({
     mode: "texture",
     oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
@@ -94,6 +106,44 @@
     spatialize: +RNG.range(0.0, 0.8).toFixed(2),
     gain: +RNG.range(0.25, 0.7).toFixed(2)
   });
+
+  function randomizeVoice(p) {
+    const mode = RNG.pick(["texture", "bass"]);
+    p.mode = mode;
+    p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
+    p.singleOsc = false;
+
+    const uni = skewLowWithSpikes(RNG, 4.5, 0.12);
+    p.unisonSpread = +lerp(0.0, 0.02, uni).toFixed(4);
+
+    const det = skewLowWithSpikes(RNG, 4.0, 0.12);
+    p.detune = Math.round(lerp(0, 60, det));
+
+    p.pwmOn = RNG.next() > 0.2;
+    p.pwm = +RNG.range(0.08, 0.92).toFixed(2);
+    p.oscRate = +RNG.range(0.7, 1.6).toFixed(2);
+    p.baseHz = Math.round(RNG.range(70, 190));
+    p.subMix = +RNG.range(0.08, 0.55).toFixed(2);
+    p.noiseMix = +RNG.range(0.0, 0.4).toFixed(2);
+    p.filterCutoff = Math.round(RNG.range(400, 2800));
+    p.filterQ = +RNG.range(0.5, 8.0).toFixed(1);
+    p.edge = +RNG.range(0.0, 0.7).toFixed(2);
+    p.drive = +RNG.range(0.1, 0.8).toFixed(2);
+
+    p.bassHz = Math.round(RNG.range(40, 120));
+    p.bassLP = Math.round(RNG.range(90, 300));
+    p.bassRes = +RNG.range(0.4, 3.0).toFixed(1);
+    p.bassDrive = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoPitch = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoPitchRate = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoLPF = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoLPFRate = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoRes = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoResRate = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoDrive = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassLfoDriveRate = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassDrift = +RNG.range(0.0, 0.3).toFixed(2);
+  }
 
   const state = {
     ctx: null,
@@ -730,7 +780,17 @@
     for (let i = 0; i < state.voiceParams.length; i++) {
       if (!state.activeTracks[i]) continue;
       if (state.frozen[i]) continue;
-      state.voiceParams[i] = defaults();
+      const p = state.voiceParams[i] || defaults();
+      const keep = {
+        gain: p.gain,
+        stereoWidth: p.stereoWidth,
+        spatialize: p.spatialize
+      };
+      randomizeVoice(p);
+      p.gain = keep.gain;
+      p.stereoWidth = keep.stereoWidth;
+      p.spatialize = keep.spatialize;
+      state.voiceParams[i] = p;
       state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
     }
     renderVoices();
