@@ -144,7 +144,7 @@ body{
   font-weight:900;
   text-transform:uppercase;
   letter-spacing:1px;
-  font-size:12px;
+  font-size:13.8px;
   margin-bottom:16px;
   color:var(--ink);
 }
@@ -154,6 +154,7 @@ body{
   flex-direction:column;
   gap:8px;
   font-size:11px;
+  margin-left:40px;
 }
 
 .voiceToggles label,
