@@ -1,5 +1,6 @@
 (() => {
   const regenBtn = document.getElementById("regenBtn");
+  const playBtn = document.getElementById("playBtn");
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
@@ -75,6 +76,7 @@
     voiceParams: [],
     frozen: [false, false, false, false, false],
     muted: [false, true, true, true, true],
+    activeTracks: [true, false, false, false, false],
     active: 0,
     ready: false
   };
@@ -301,6 +303,7 @@
     for (let i = 0; i < 5; i++) {
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
       state.voiceParams[i] = defaults();
+      if (!state.activeTracks[i]) state.muted[i] = true;
       state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
     }
   }
@@ -325,12 +328,55 @@
     voiceGrid.innerHTML = "";
     for (let i = 0; i < 5; i++) {
       const card = document.createElement("div");
-      card.className = "voiceCard" + (state.active === i ? " active" : "") + (state.frozen[i] ? " frozen" : "");
+      const isActive = state.active === i;
+      const isEnabled = state.activeTracks[i];
+      card.className = "voiceCard" + (isActive ? " active" : "") + (state.frozen[i] ? " frozen" : "") + (isEnabled ? "" : " empty");
       card.dataset.index = String(i);
 
       const title = document.createElement("div");
       title.className = "voiceTitle";
       title.textContent = `Voice ${i + 1}`;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "deleteBtn";
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "Delete";
+      deleteBtn.disabled = !isEnabled;
+      deleteBtn.addEventListener("click", () => {
+        state.activeTracks[i] = false;
+        state.muted[i] = true;
+        state.frozen[i] = false;
+        state.voiceParams[i] = defaults();
+        state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
+        if (state.active === i) {
+          state.active = state.activeTracks.findIndex((v) => v);
+          if (state.active === -1) state.active = 0;
+        }
+        renderVoices();
+        syncControls();
+      });
+
+      if (!isEnabled) {
+        const addBtn = document.createElement("button");
+        addBtn.className = "addBtn";
+        addBtn.type = "button";
+        addBtn.textContent = "+";
+        addBtn.addEventListener("click", () => {
+          state.activeTracks[i] = true;
+          state.muted[i] = false;
+          state.frozen[i] = false;
+          state.voiceParams[i] = defaults();
+          state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+          state.active = i;
+          renderVoices();
+          syncControls();
+        });
+        card.appendChild(title);
+        card.appendChild(deleteBtn);
+        card.appendChild(addBtn);
+        voiceGrid.appendChild(card);
+        continue;
+      }
 
       const toggles = document.createElement("div");
       toggles.className = "voiceToggles";
@@ -377,17 +423,26 @@
       toggles.appendChild(muteLabel);
 
       card.appendChild(title);
+      card.appendChild(deleteBtn);
       card.appendChild(toggles);
       voiceGrid.appendChild(card);
     }
   }
 
   function syncControls() {
-    const p = state.voiceParams[state.active];
-    activeLabel.textContent = `Editing: Voice ${state.active + 1}`;
+    const activeIndex = state.active;
+    const hasActive = state.activeTracks[activeIndex];
+    const p = state.voiceParams[activeIndex];
+    activeLabel.textContent = hasActive ? `Editing: Voice ${activeIndex + 1}` : "Editing: —";
     const inputs = controls.querySelectorAll("[data-param]");
     inputs.forEach((input) => {
       const key = input.dataset.param;
+      if (!hasActive) {
+        input.disabled = true;
+        const out = controls.querySelector(`[data-out='${key}']`);
+        if (out) out.textContent = "";
+        return;
+      }
       if (input.tagName === "SELECT") {
         input.value = p[key];
       } else if (input.type === "checkbox") {
@@ -456,6 +511,7 @@
   function regenerate() {
     startAudio();
     for (let i = 0; i < state.voiceParams.length; i++) {
+      if (!state.activeTracks[i]) continue;
       if (state.frozen[i]) continue;
       state.voiceParams[i] = defaults();
       state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
@@ -471,6 +527,19 @@
   }
 
   regenBtn.addEventListener("click", regenerate);
+  if (playBtn) {
+    playBtn.addEventListener("click", async () => {
+      await startAudio();
+      if (!state.ctx) return;
+      if (state.ctx.state === "running") {
+        await state.ctx.suspend();
+        playBtn.textContent = "Play";
+      } else {
+        await state.ctx.resume();
+        playBtn.textContent = "Pause";
+      }
+    });
+  }
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
     startBtn.addEventListener("click", startAudio);

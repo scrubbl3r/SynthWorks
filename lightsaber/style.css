@@ -81,6 +81,12 @@ body{
   margin-bottom:12px;
 }
 
+.topActions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
 .title{
   font-weight:900;
   text-transform:uppercase;
@@ -101,6 +107,11 @@ body{
   outline-offset: calc(-1 * var(--stroke));
 }
 .regen:active{ transform:translateY(1px); }
+.regen.ghost{
+  background:transparent;
+  color:var(--ink);
+  outline: var(--stroke) solid var(--ink);
+}
 
 .voiceStrip{
   border:var(--stroke) solid #000;
@@ -157,6 +168,45 @@ body{
 .voiceCard.frozen{
   background:#17132f;
   color:rgba(255,59,24,0.6);
+}
+
+.voiceCard.empty{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  color:rgba(255,59,24,0.75);
+}
+
+.addBtn{
+  width:72px;
+  height:72px;
+  border-radius:12px;
+  border:2px dashed var(--ink);
+  background:transparent;
+  color:var(--ink);
+  font-size:42px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.deleteBtn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  border:0;
+  background:transparent;
+  color:var(--ink);
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:0.6px;
+  cursor:pointer;
+}
+
+.deleteBtn:disabled{
+  opacity:0.35;
+  cursor:not-allowed;
 }
 
 .panel{
