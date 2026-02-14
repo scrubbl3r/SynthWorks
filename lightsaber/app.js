@@ -331,28 +331,6 @@
       title.className = "voiceTitle";
       title.textContent = `Voice ${i + 1}`;
 
-      const dupBtn = document.createElement("button");
-      dupBtn.className = "dupBtn";
-      dupBtn.type = "button";
-      dupBtn.textContent = "Duplicate";
-      dupBtn.addEventListener("click", () => {
-        const target = (() => {
-          for (let t = state.activeTracks.length - 1; t >= 0; t--) {
-            if (!state.activeTracks[t] && t !== i) return t;
-          }
-          return -1;
-        })();
-        if (target === -1) return;
-        state.activeTracks[target] = true;
-        state.muted[target] = false;
-        state.frozen[target] = false;
-        state.voiceParams[target] = JSON.parse(JSON.stringify(state.voiceParams[i]));
-        state.voices[target].apply(state.voiceParams[target], state.muted[target], state.voiceParams[target].stereoWidth, basePanFor(target));
-        state.active = target;
-        renderVoices();
-        syncControls();
-      });
-
       if (!isEnabled) {
         const addBtn = document.createElement("button");
         addBtn.className = "addBtn";
@@ -405,6 +383,28 @@
         syncControls();
       });
 
+      const dupBtn = document.createElement("button");
+      dupBtn.className = "dupBtn";
+      dupBtn.type = "button";
+      dupBtn.textContent = "Duplicate";
+      dupBtn.addEventListener("click", () => {
+        const target = (() => {
+          for (let t = state.activeTracks.length - 1; t >= 0; t--) {
+            if (!state.activeTracks[t] && t !== i) return t;
+          }
+          return -1;
+        })();
+        if (target === -1) return;
+        state.activeTracks[target] = true;
+        state.muted[target] = false;
+        state.frozen[target] = false;
+        state.voiceParams[target] = JSON.parse(JSON.stringify(state.voiceParams[i]));
+        state.voices[target].apply(state.voiceParams[target], state.muted[target], state.voiceParams[target].stereoWidth, basePanFor(target));
+        state.active = target;
+        renderVoices();
+        syncControls();
+      });
+
       const freezeLabel = document.createElement("label");
       const freezeBox = document.createElement("input");
       freezeBox.type = "checkbox";
@@ -428,6 +428,15 @@
       muteLabel.appendChild(muteBox);
       muteLabel.appendChild(document.createTextNode("Mute"));
 
+      if (!isActive) {
+        const editTag = document.createElement("div");
+        editTag.className = "editTag";
+        editTag.textContent = "Edit";
+        card.appendChild(editTag);
+        voiceGrid.appendChild(card);
+        continue;
+      }
+
       toggles.appendChild(deleteBtn);
       toggles.appendChild(dupBtn);
       toggles.appendChild(freezeLabel);
@@ -435,12 +444,6 @@
 
       card.appendChild(title);
       card.appendChild(toggles);
-      if (!isActive) {
-        const editTag = document.createElement("div");
-        editTag.className = "editTag";
-        editTag.textContent = "Edit";
-        card.appendChild(editTag);
-      }
       voiceGrid.appendChild(card);
     }
   }
