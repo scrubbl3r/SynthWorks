@@ -562,6 +562,7 @@
       deleteBtn.type = "button";
       deleteBtn.textContent = "Delete";
       deleteBtn.addEventListener("click", () => {
+        const deletingSoloTarget = state.soloIndex === i;
         state.activeTracks[i] = false;
         state.muted[i] = true;
         state.frozen[i] = false;
@@ -574,6 +575,22 @@
         if (state.active === i) {
           state.active = state.activeTracks.findIndex((v) => v);
           if (state.active === -1) state.active = 0;
+        }
+        if (deletingSoloTarget) {
+          const next = state.activeTracks[state.active]
+            ? state.active
+            : state.activeTracks.findIndex((v) => v);
+          if (next !== -1) {
+            state.soloIndex = next;
+            state.muted[next] = false;
+            for (let t = 0; t < state.muted.length; t++) {
+              state.muted[t] = t === next ? false : true;
+              state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
+            }
+            state.active = next;
+          } else {
+            state.soloIndex = null;
+          }
         }
         renderVoices();
         syncControls();
