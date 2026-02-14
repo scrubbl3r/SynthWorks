@@ -201,10 +201,20 @@ body{
 .voiceCard.empty{
   display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
+  align-items:stretch;
+  justify-content:flex-start;
   color:rgba(255,59,24,0.75);
+}
+
+.voiceCard.empty .voiceTitle{
+  align-self:flex-start;
+  text-align:left;
+  margin-bottom:0;
+}
+
+.voiceCard.empty .addBtn{
+  align-self:center;
+  margin:auto;
 }
 
 .editTag{
