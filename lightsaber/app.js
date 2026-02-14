@@ -223,7 +223,9 @@
       const t = ctx.currentTime;
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
-      if (p.oscType === "square" && p.pwmOn) {
+      const isStatic = !!p.staticVoice;
+      const isSingle = !!p.singleOsc || isStatic;
+      if (p.oscType === "square" && p.pwmOn && !isStatic) {
         const wave = makePWMWave(ctx, clamp(p.pwm, 0.05, 0.95));
         oscA.setPeriodicWave(wave);
         oscB.setPeriodicWave(wave);
@@ -233,23 +235,23 @@
       }
       oscSub.type = "triangle";
 
-      const spread = p.singleOsc ? 0 : clamp(p.unisonSpread, 0, 0.02);
+      const spread = isSingle ? 0 : clamp(p.unisonSpread, 0, 0.02);
       const baseA = base * (1 - spread * 0.5);
       const baseB = base * (1 + spread * 0.5);
       oscA.frequency.setTargetAtTime(baseA, t, 0.03);
       oscB.frequency.setTargetAtTime(baseB, t, 0.03);
       oscSub.frequency.setTargetAtTime(base * 0.5, t, 0.03);
 
-      oscB.detune.setTargetAtTime(p.singleOsc ? 0 : p.detune * 2, t, 0.04);
-      gB.gain.setTargetAtTime(p.singleOsc ? 0 : 0.45, t, 0.04);
+      const detuneScale = isStatic ? 0.0 : 1;
+      oscB.detune.setTargetAtTime(isSingle ? 0 : p.detune * 2 * detuneScale, t, 0.04);
+      gB.gain.setTargetAtTime(isSingle ? 0 : 0.45, t, 0.04);
 
       gSub.gain.setTargetAtTime(p.subMix, t, 0.03);
-      noiseG.gain.setTargetAtTime(p.noiseMix, t, 0.03);
+      const noiseScale = isStatic ? 0.0 : 1;
+      noiseG.gain.setTargetAtTime(p.noiseMix * noiseScale, t, 0.03);
 
-      const glide = p.staticVoice ? 0.4 : 0.04;
-      const detuneScale = p.staticVoice ? 0.15 : 1;
-      const edgeScale = p.staticVoice ? 0.2 : 1;
-      const noiseScale = p.staticVoice ? 0.0 : 1;
+      const glide = isStatic ? 0.4 : 0.04;
+      const edgeScale = isStatic ? 0.0 : 1;
       filter.frequency.setTargetAtTime(p.filterCutoff, t, glide);
       filter.Q.setTargetAtTime(p.filterQ, t, glide);
 
@@ -261,13 +263,7 @@
       gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
-      if (p.staticVoice) {
-        oscB.detune.setTargetAtTime(p.singleOsc ? 0 : p.detune * 2 * detuneScale, t, glide);
-        noiseG.gain.setTargetAtTime(p.noiseMix * noiseScale, t, glide);
-        applySpatialization(0, muted);
-      } else {
-        applySpatialization(p.spatialize, muted);
-      }
+      applySpatialization(isStatic ? 0 : p.spatialize, muted);
     }
 
     let lastSpatialize = -1;
