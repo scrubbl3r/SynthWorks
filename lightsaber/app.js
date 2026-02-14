@@ -61,14 +61,14 @@
     }
   };
 
-  function skewLow(rng, power = 4) {
-    return Math.pow(clamp01(rng()), power);
+  function skewLow(rngFn, power = 4) {
+    return Math.pow(clamp01(rngFn()), power);
   }
 
-  function skewLowWithSpikes(rng, power = 4, spikeChance = 0.12) {
-    const v = skewLow(rng, power);
-    if (rng() < spikeChance) {
-      return 1 - Math.pow(clamp01(rng()), 1.2);
+  function skewLowWithSpikes(rngFn, power = 4, spikeChance = 0.12) {
+    const v = skewLow(rngFn, power);
+    if (rngFn() < spikeChance) {
+      return 1 - Math.pow(clamp01(rngFn()), 1.2);
     }
     return v;
   }
@@ -108,15 +108,16 @@
   });
 
   function randomizeVoice(p) {
+    const rand = RNG.next.bind(RNG);
     const mode = RNG.pick(["texture", "bass"]);
     p.mode = mode;
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
 
-    const uni = skewLowWithSpikes(RNG, 4.5, 0.12);
+    const uni = skewLowWithSpikes(rand, 4.5, 0.12);
     p.unisonSpread = +lerp(0.0, 0.02, uni).toFixed(4);
 
-    const det = skewLowWithSpikes(RNG, 4.0, 0.12);
+    const det = skewLowWithSpikes(rand, 4.0, 0.12);
     p.detune = Math.round(lerp(0, 60, det));
 
     p.pwmOn = RNG.next() > 0.2;
