@@ -376,6 +376,14 @@
           return;
         }
         state.active = i;
+        if (state.soloIndex != null) {
+          state.soloIndex = i;
+          state.muted[i] = false;
+          for (let t = 0; t < state.muted.length; t++) {
+            state.muted[t] = t === i ? false : true;
+            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
+          }
+        }
         renderVoices();
         syncControls();
       });
@@ -454,7 +462,7 @@
       const soloLabel = document.createElement("label");
       const soloBox = document.createElement("input");
       soloBox.type = "checkbox";
-      soloBox.checked = state.soloIndex === i;
+      soloBox.checked = state.soloIndex != null;
       soloBox.addEventListener("change", () => {
         if (soloBox.checked) {
           state.soloIndex = i;
