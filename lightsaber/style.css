@@ -76,7 +76,7 @@ body{
   gap:0;
   border:var(--stroke) solid #000;
   padding:0;
-  background:#0b0820;
+  background:var(--panel);
   color:var(--ink);
   margin-bottom:12px;
 }
