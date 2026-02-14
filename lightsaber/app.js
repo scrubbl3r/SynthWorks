@@ -659,6 +659,7 @@
       soloLabel.appendChild(document.createTextNode("Solo"));
 
       if (!isActive) {
+        card.appendChild(title);
         const editTag = document.createElement("div");
         editTag.className = "editTag";
         editTag.textContent = "Edit";

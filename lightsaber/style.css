@@ -146,6 +146,7 @@ body{
   letter-spacing:1px;
   font-size:12px;
   margin-bottom:16px;
+  color:var(--ink);
 }
 
 .voiceToggles{
@@ -189,9 +190,6 @@ body{
 
 .voiceCard.active{
   background:var(--accent);
-  color:var(--accent-ink);
-}
-.voiceCard.active .voiceTitle{
   color:var(--accent-ink);
 }
 
