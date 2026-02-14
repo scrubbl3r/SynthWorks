@@ -629,6 +629,12 @@
         if (out) out.textContent = "";
         return;
       }
+      if (!p) {
+        input.disabled = true;
+        const out = controls.querySelector(`[data-out='${key}']`);
+        if (out) out.textContent = "";
+        return;
+      }
       if (input.tagName === "SELECT") {
         input.value = p[key];
       } else if (input.type === "checkbox") {
@@ -640,7 +646,7 @@
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
-    applyModeVisibility(p.mode);
+    applyModeVisibility(p && p.mode ? p.mode : "texture");
   }
 
   function formatValue(key, value) {
@@ -732,6 +738,11 @@
   }
 
   function init() {
+    if (!state.voiceParams.length) {
+      for (let i = 0; i < 5; i++) {
+        state.voiceParams[i] = defaults();
+      }
+    }
     renderVoices();
     attachControlHandlers();
     syncControls();
