@@ -318,6 +318,11 @@ body{
   letter-spacing:0.8px;
 }
 
+.row.bassLfoRow > span{
+  padding-left:10px;
+  font-size:80%;
+}
+
 .rowInline{
   display:flex;
   align-items:center;
