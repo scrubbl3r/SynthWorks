@@ -158,8 +158,7 @@
     active: 0,
     ready: false,
     playing: true,
-    soloIndex: null,
-    preSoloMuted: [false, true, true, true, true]
+    soloIndex: null
   };
 
   function ensureAudio() {
@@ -478,7 +477,7 @@
       if (p.spatialize == null) p.spatialize = 0.5;
       state.voiceParams[i] = p;
       if (!state.activeTracks[i]) state.muted[i] = true;
-      state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+      applyVoice(i);
     }
   }
 
@@ -496,7 +495,6 @@
     const oldVoiceParams = state.voiceParams.slice();
     const oldMuted = state.muted.slice();
     const oldFrozen = state.frozen.slice();
-    const oldPreSoloMuted = state.preSoloMuted.slice();
     const oldActive = state.active;
     const oldSolo = state.soloIndex;
 
@@ -523,12 +521,6 @@
       }
     }
 
-    state.preSoloMuted = new Array(n).fill(true);
-    for (let i = 0; i < enabledOld.length; i++) {
-      const oldIdx = enabledOld[i];
-      state.preSoloMuted[i] = !!oldPreSoloMuted[oldIdx];
-    }
-
     if (oldToNew.has(oldActive)) {
       state.active = oldToNew.get(oldActive);
     } else {
@@ -541,13 +533,27 @@
       state.soloIndex = null;
     }
 
-    for (let i = 0; i < n; i++) {
-      state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
-    }
+    applyAllVoices();
   }
 
   function basePanFor(index) {
     return lerp(-0.8, 0.8, index / 4);
+  }
+
+  function effectiveMuted(index) {
+    if (!state.activeTracks[index]) return true;
+    if (state.soloIndex != null) return state.soloIndex !== index;
+    return !!state.muted[index];
+  }
+
+  function applyVoice(index) {
+    const p = state.voiceParams[index];
+    if (!p || !state.voices[index]) return;
+    state.voices[index].apply(p, effectiveMuted(index), p.stereoWidth, basePanFor(index));
+  }
+
+  function applyAllVoices() {
+    for (let i = 0; i < state.voices.length; i++) applyVoice(i);
   }
 
   function makePWMWave(ctx, duty) {
@@ -592,13 +598,8 @@
           state.active = i;
           if (state.soloIndex != null) {
             state.soloIndex = i;
-            for (let t = 0; t < state.muted.length; t++) {
-              state.muted[t] = t === i ? false : true;
-            }
           }
-          for (let t = 0; t < state.voices.length; t++) {
-            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
-          }
+          applyAllVoices();
           renderVoices();
           syncControls();
         });
@@ -619,11 +620,7 @@
         state.active = i;
         if (state.soloIndex != null) {
           state.soloIndex = i;
-          state.muted[i] = false;
-          for (let t = 0; t < state.muted.length; t++) {
-            state.muted[t] = t === i ? false : true;
-            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
-          }
+          applyAllVoices();
         }
         renderVoices();
         syncControls();
@@ -639,7 +636,7 @@
         state.muted[i] = true;
         state.frozen[i] = false;
         state.voiceParams[i] = makeDefaultVoice();
-        state.voices[i].apply(state.voiceParams[i], true, state.voiceParams[i].stereoWidth, basePanFor(i));
+        applyVoice(i);
         compactTracksLeft();
         if (deletingSoloTarget) {
           const next = state.activeTracks[state.active]
@@ -647,11 +644,7 @@
             : state.activeTracks.findIndex((v) => v);
           if (next !== -1) {
             state.soloIndex = next;
-            state.muted[next] = false;
-            for (let t = 0; t < state.muted.length; t++) {
-              state.muted[t] = t === next ? false : true;
-              state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
-            }
+            applyAllVoices();
             state.active = next;
           } else {
             state.soloIndex = null;
@@ -681,8 +674,9 @@
         state.muted[target] = false;
         state.frozen[target] = false;
         state.voiceParams[target] = JSON.parse(JSON.stringify(state.voiceParams[i]));
-        state.voices[target].apply(state.voiceParams[target], state.muted[target], state.voiceParams[target].stereoWidth, basePanFor(target));
         state.active = target;
+        if (state.soloIndex != null) state.soloIndex = target;
+        applyAllVoices();
         renderVoices();
         syncControls();
       });
@@ -704,12 +698,9 @@
       muteBox.checked = state.muted[i];
       muteBox.addEventListener("change", () => {
         state.muted[i] = muteBox.checked;
-        if (state.soloIndex === i && state.muted[i]) {
-          state.soloIndex = null;
-          state.muted = state.preSoloMuted.slice();
-        }
-        state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+        applyAllVoices();
         renderVoices();
+        syncControls();
       });
       muteLabel.appendChild(muteBox);
       muteLabel.appendChild(document.createTextNode("Mute"));
@@ -721,18 +712,10 @@
       soloBox.addEventListener("change", () => {
         if (soloBox.checked) {
           state.soloIndex = i;
-          state.muted[i] = false;
-          state.preSoloMuted = state.muted.slice();
-          for (let t = 0; t < state.muted.length; t++) {
-            state.muted[t] = t === i ? false : true;
-            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
-          }
+          applyAllVoices();
         } else {
           state.soloIndex = null;
-          state.muted = state.preSoloMuted.slice();
-          for (let t = 0; t < state.muted.length; t++) {
-            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
-          }
+          applyAllVoices();
         }
         renderVoices();
         syncControls();
@@ -789,7 +772,7 @@
       } else {
         input.value = p[key];
       }
-      input.disabled = state.active == null || state.muted[state.active];
+      input.disabled = state.active == null || effectiveMuted(state.active);
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
@@ -846,7 +829,7 @@
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
 
-      state.voices[state.active].apply(p, state.muted[state.active], p.stereoWidth, basePanFor(state.active));
+      applyVoice(state.active);
       if (key === "mode") applyModeVisibility(p.mode);
     };
 
@@ -889,7 +872,7 @@
       p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
       if (state.voices[i]) {
-        state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
+        applyVoice(i);
       }
     }
     renderVoices();
