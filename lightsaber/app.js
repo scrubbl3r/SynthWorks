@@ -589,8 +589,16 @@
           p.stereoWidth = 0.5;
           p.spatialize = 0.5;
           state.voiceParams[i] = p;
-          state.voices[i].apply(state.voiceParams[i], state.muted[i], state.voiceParams[i].stereoWidth, basePanFor(i));
           state.active = i;
+          if (state.soloIndex != null) {
+            state.soloIndex = i;
+            for (let t = 0; t < state.muted.length; t++) {
+              state.muted[t] = t === i ? false : true;
+            }
+          }
+          for (let t = 0; t < state.voices.length; t++) {
+            state.voices[t].apply(state.voiceParams[t], state.muted[t], state.voiceParams[t].stereoWidth, basePanFor(t));
+          }
           renderVoices();
           syncControls();
         });
