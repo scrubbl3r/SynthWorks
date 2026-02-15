@@ -361,6 +361,9 @@
     function apply(p, muted, width, basePan) {
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
+      const textureGain = clamp(p.gain, 0, 0.8);
+      const bassGainBoost = 2.0;
+      const bassGainValue = clamp(p.gain * bassGainBoost, 0, 1.6);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -395,14 +398,14 @@
       edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
 
       drive.setAmount(p.drive);
-      gain.gain.setTargetAtTime(muted ? 0 : p.gain, t, 0.04);
+      gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
       const mainTarget = isBass ? 0 : 1;
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
 
       if (isBass) {
-        const bassTarget = muted ? 0 : p.gain;
+        const bassTarget = muted ? 0 : bassGainValue;
         bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
 
         bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
