@@ -323,6 +323,11 @@ body{
   font-size:80%;
 }
 
+.row.noiseModRow > span{
+  padding-left:10px;
+  font-size:80%;
+}
+
 .rowInline{
   display:flex;
   align-items:center;

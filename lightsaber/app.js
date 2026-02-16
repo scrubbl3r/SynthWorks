@@ -40,6 +40,23 @@
     { key: "bassLfoDrive", label: "Bass Drive LFO" },
     { key: "bassLfoDriveRate", label: "Bass Drive LFO Rate" },
     { key: "bassDrift", label: "Bass Drift" },
+    { key: "noiseType", label: "Noise Type" },
+    { key: "noiseBehavior", label: "Noise Behavior" },
+    { key: "noiseAttack", label: "Noise Attack" },
+    { key: "noiseDecay", label: "Noise Decay" },
+    { key: "noiseSustain", label: "Noise Sustain" },
+    { key: "noiseRelease", label: "Noise Release" },
+    { key: "noiseTrigLen", label: "Noise Trigger Length" },
+    { key: "noiseLPF", label: "Noise LPF" },
+    { key: "noiseRes", label: "Noise Resonance" },
+    { key: "noiseHPF", label: "Noise HPF" },
+    { key: "noiseBPF", label: "Noise BPF" },
+    { key: "noiseBPWidth", label: "Noise BP Width" },
+    { key: "noiseSweepAmt", label: "Noise Sweep Amount" },
+    { key: "noiseSweepTime", label: "Noise Sweep Time" },
+    { key: "noiseDrive", label: "Noise Drive" },
+    { key: "noiseFlutterAmt", label: "Noise Flutter Amount" },
+    { key: "noiseFlutterRate", label: "Noise Flutter Rate" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
@@ -102,6 +119,23 @@
     bassLfoDrive: +RNG.range(0.0, 0.6).toFixed(2),
     bassLfoDriveRate: +RNG.range(0.0, 0.6).toFixed(2),
     bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
+    noiseType: RNG.pick(["white", "pink", "bit", "metallic"]),
+    noiseBehavior: RNG.next() < 0.3 ? "oneshot" : "sustain",
+    noiseAttack: +RNG.range(0.001, 0.12).toFixed(3),
+    noiseDecay: +RNG.range(0.05, 1.0).toFixed(2),
+    noiseSustain: +RNG.range(0.2, 0.85).toFixed(2),
+    noiseRelease: +RNG.range(0.08, 1.2).toFixed(2),
+    noiseTrigLen: +RNG.range(0.06, 0.7).toFixed(2),
+    noiseLPF: Math.round(RNG.range(350, 9000)),
+    noiseRes: +RNG.range(0.4, 5.0).toFixed(1),
+    noiseHPF: Math.round(RNG.range(20, 1200)),
+    noiseBPF: Math.round(RNG.range(130, 3200)),
+    noiseBPWidth: +RNG.range(0.2, 0.85).toFixed(2),
+    noiseSweepAmt: +RNG.range(-0.9, 0.9).toFixed(2),
+    noiseSweepTime: +RNG.range(0.03, 0.9).toFixed(2),
+    noiseDrive: +RNG.range(0.0, 0.9).toFixed(2),
+    noiseFlutterAmt: +RNG.range(0.0, 0.45).toFixed(2),
+    noiseFlutterRate: +RNG.range(0.0, 10.0).toFixed(1),
     stereoWidth: 0.5,
     spatialize: 0.5,
     gain: 0.5
@@ -109,7 +143,7 @@
 
   function randomizeVoice(p) {
     const rand = RNG.next.bind(RNG);
-    const mode = RNG.pick(["texture", "bass"]);
+    const mode = RNG.pick(["texture", "bass", "noise"]);
     p.mode = mode;
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
@@ -145,6 +179,24 @@
     p.bassLfoDrive = +RNG.range(0.0, 0.6).toFixed(2);
     p.bassLfoDriveRate = +RNG.range(0.0, 0.6).toFixed(2);
     p.bassDrift = +RNG.range(0.0, 0.3).toFixed(2);
+
+    p.noiseType = RNG.pick(["white", "pink", "bit", "metallic"]);
+    p.noiseBehavior = RNG.next() < 0.35 ? "oneshot" : "sustain";
+    p.noiseAttack = +RNG.range(0.001, 0.18).toFixed(3);
+    p.noiseDecay = +RNG.range(0.03, 1.4).toFixed(2);
+    p.noiseSustain = +RNG.range(0.05, 0.9).toFixed(2);
+    p.noiseRelease = +RNG.range(0.06, 1.8).toFixed(2);
+    p.noiseTrigLen = +RNG.range(0.04, 1.0).toFixed(2);
+    p.noiseLPF = Math.round(RNG.range(200, 12000));
+    p.noiseRes = +RNG.range(0.2, 8.5).toFixed(1);
+    p.noiseHPF = Math.round(RNG.range(20, 2500));
+    p.noiseBPF = Math.round(RNG.range(100, 7000));
+    p.noiseBPWidth = +RNG.range(0.1, 1.0).toFixed(2);
+    p.noiseSweepAmt = +RNG.range(-1, 1).toFixed(2);
+    p.noiseSweepTime = +RNG.range(0.01, 1.8).toFixed(2);
+    p.noiseDrive = +RNG.range(0, 1).toFixed(2);
+    p.noiseFlutterAmt = +RNG.range(0, 0.9).toFixed(2);
+    p.noiseFlutterRate = +RNG.range(0, 20).toFixed(1);
   }
 
   const state = {
@@ -254,6 +306,37 @@
     noiseHP.connect(noiseG);
     noiseG.connect(mix);
 
+    const noiseModeHP = ctx.createBiquadFilter();
+    noiseModeHP.type = "highpass";
+    noiseModeHP.frequency.value = 40;
+
+    const noiseModeLP = ctx.createBiquadFilter();
+    noiseModeLP.type = "lowpass";
+    noiseModeLP.frequency.value = 4000;
+
+    const noiseModeBP = ctx.createBiquadFilter();
+    noiseModeBP.type = "bandpass";
+    noiseModeBP.frequency.value = 900;
+    noiseModeBP.Q.value = 2.0;
+
+    const noiseModeDrive = makeDrive(ctx);
+    const noiseModeGain = ctx.createGain();
+    noiseModeGain.gain.value = 0.0;
+
+    const noiseFlutterOsc = ctx.createOscillator();
+    noiseFlutterOsc.type = "sine";
+    noiseFlutterOsc.frequency.value = 0;
+    const noiseFlutterGain = ctx.createGain();
+    noiseFlutterGain.gain.value = 0;
+    noiseFlutterOsc.connect(noiseFlutterGain);
+    noiseFlutterGain.connect(noiseModeBP.frequency);
+
+    noise.connect(noiseModeHP);
+    noiseModeHP.connect(noiseModeLP);
+    noiseModeLP.connect(noiseModeBP);
+    noiseModeBP.connect(noiseModeDrive.input);
+    noiseModeDrive.output.connect(noiseModeGain);
+
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value = 1200;
@@ -274,6 +357,7 @@
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
+    noiseModeGain.connect(panner);
 
     const spatialBands = [];
     const centers = [120, 220, 380, 620, 980, 1600, 2600, 4200];
@@ -351,6 +435,7 @@
     bassLfoLPF.start();
     bassLfoRes.start();
     bassLfoDrive.start();
+    noiseFlutterOsc.start();
 
     oscA.start();
     oscB.start();
@@ -358,12 +443,55 @@
     bassOsc.start();
     noise.start();
 
+    let noiseGateOn = false;
+    let oneShotCooldownUntil = 0;
+    let lastNoiseType = "";
+
+    function noiseTypeProfile(noiseType) {
+      if (noiseType === "pink") return { hpMul: 0.5, lpMul: 0.8, resMul: 0.8, driveAdd: -0.08, flutterMul: 0.8 };
+      if (noiseType === "bit") return { hpMul: 1.4, lpMul: 0.7, resMul: 1.4, driveAdd: 0.35, flutterMul: 1.6 };
+      if (noiseType === "metallic") return { hpMul: 1.1, lpMul: 1.2, resMul: 1.8, driveAdd: 0.2, flutterMul: 1.3 };
+      return { hpMul: 1.0, lpMul: 1.0, resMul: 1.0, driveAdd: 0.0, flutterMul: 1.0 };
+    }
+
+    function triggerNoiseOneShot(p, t, level) {
+      const a = clamp(p.noiseAttack, 0.001, 1.5);
+      const d = clamp(p.noiseDecay, 0.01, 3);
+      const s = clamp01(p.noiseSustain);
+      const r = clamp(p.noiseRelease, 0.01, 4);
+      const trigLen = clamp(p.noiseTrigLen, 0.02, 2);
+      const peak = level;
+      const sustainLevel = peak * s;
+
+      noiseModeGain.gain.cancelScheduledValues(t);
+      noiseModeGain.gain.setValueAtTime(0, t);
+      noiseModeGain.gain.linearRampToValueAtTime(peak, t + a);
+      noiseModeGain.gain.linearRampToValueAtTime(sustainLevel, t + a + d);
+      noiseModeGain.gain.setValueAtTime(sustainLevel, t + a + d + trigLen);
+      noiseModeGain.gain.linearRampToValueAtTime(0, t + a + d + trigLen + r);
+    }
+
+    function applyNoiseSweep(p, t, profile) {
+      const base = clamp(p.noiseBPF, 80, 8000);
+      const sweepAmt = clamp(p.noiseSweepAmt, -1, 1);
+      const sweepTime = clamp(p.noiseSweepTime, 0.01, 2);
+      const target = clamp(base * Math.pow(2, sweepAmt * 2), 60, 12000);
+      const start = sweepAmt >= 0 ? base : target;
+      const end = sweepAmt >= 0 ? target : base;
+      noiseModeBP.frequency.cancelScheduledValues(t);
+      noiseModeBP.frequency.setValueAtTime(start, t);
+      noiseModeBP.frequency.linearRampToValueAtTime(end, t + sweepTime);
+      noiseModeBP.Q.setTargetAtTime(clamp(lerp(11, 0.8, clamp01(p.noiseBPWidth)) * profile.resMul, 0.2, 18), t, 0.04);
+    }
+
     function apply(p, muted, width, basePan) {
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
+      const isNoise = p.mode === "noise";
       const textureGain = clamp(p.gain, 0, 0.8);
       const bassGainBoost = 2.0;
       const bassGainValue = clamp(p.gain * bassGainBoost, 0, 1.6);
+      const noiseGainValue = clamp(p.gain * 2.0, 0, 1.6);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -401,7 +529,7 @@
       gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
-      const mainTarget = isBass ? 0 : 1;
+      const mainTarget = isBass || isNoise ? 0 : 1;
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
 
       if (isBass) {
@@ -435,6 +563,69 @@
         bassLfoLPFGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoResGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoDriveGain.gain.setTargetAtTime(0, t, 0.05);
+      }
+
+      if (isNoise) {
+        const profile = noiseTypeProfile(p.noiseType);
+        if (p.noiseType !== lastNoiseType) {
+          lastNoiseType = p.noiseType;
+        }
+
+        noiseModeHP.frequency.setTargetAtTime(clamp(p.noiseHPF * profile.hpMul, 20, 4000), t, 0.04);
+        noiseModeLP.frequency.setTargetAtTime(clamp(p.noiseLPF * profile.lpMul, 100, 12000), t, 0.04);
+        noiseModeLP.Q.setTargetAtTime(clamp(p.noiseRes * profile.resMul, 0.2, 12), t, 0.04);
+        noiseModeDrive.setAmount(clamp01(p.noiseDrive + profile.driveAdd));
+
+        const flutterRate = clamp(p.noiseFlutterRate, 0, 20);
+        const flutterDepth = clamp01(p.noiseFlutterAmt) * profile.flutterMul;
+        noiseFlutterOsc.frequency.setTargetAtTime(flutterRate, t, 0.08);
+        noiseFlutterGain.gain.setTargetAtTime(clamp(p.noiseBPF * 0.2 * flutterDepth, 0, 2500), t, 0.08);
+        applyNoiseSweep(p, t, profile);
+
+        if (p.noiseBehavior === "oneshot") {
+          if (noiseGateOn) {
+            noiseModeGain.gain.cancelScheduledValues(t);
+            noiseModeGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseGateOn = false;
+          }
+          if (muted) {
+            noiseModeGain.gain.cancelScheduledValues(t);
+            noiseModeGain.gain.setTargetAtTime(0, t, 0.02);
+          } else if (t >= oneShotCooldownUntil) {
+            triggerNoiseOneShot(p, t, noiseGainValue);
+            oneShotCooldownUntil = t + clamp(p.noiseTrigLen, 0.02, 2) * 0.8 + 0.04;
+          }
+        } else {
+          oneShotCooldownUntil = 0;
+          const a = clamp(p.noiseAttack, 0.001, 1.5);
+          const d = clamp(p.noiseDecay, 0.01, 3);
+          const s = clamp01(p.noiseSustain);
+          const r = clamp(p.noiseRelease, 0.01, 4);
+          const sustainLevel = noiseGainValue * s;
+
+          if (!muted) {
+            if (!noiseGateOn) {
+              noiseModeGain.gain.cancelScheduledValues(t);
+              noiseModeGain.gain.setValueAtTime(0, t);
+              noiseModeGain.gain.linearRampToValueAtTime(noiseGainValue, t + a);
+              noiseModeGain.gain.linearRampToValueAtTime(sustainLevel, t + a + d);
+              noiseGateOn = true;
+            } else {
+              noiseModeGain.gain.setTargetAtTime(sustainLevel, t, 0.08);
+            }
+          } else if (noiseGateOn) {
+            noiseModeGain.gain.cancelScheduledValues(t);
+            noiseModeGain.gain.setTargetAtTime(0, t, Math.max(0.01, r * 0.25));
+            noiseGateOn = false;
+          } else {
+            noiseModeGain.gain.setTargetAtTime(0, t, 0.05);
+          }
+        }
+      } else {
+        if (noiseGateOn) noiseGateOn = false;
+        noiseModeGain.gain.setTargetAtTime(0, t, 0.05);
+        noiseFlutterGain.gain.setTargetAtTime(0, t, 0.05);
+        oneShotCooldownUntil = 0;
       }
 
       applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
@@ -784,6 +975,23 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "noiseType") return value;
+    if (key === "noiseBehavior") return value === "oneshot" ? "One-shot" : "Sustain";
+    if (key === "noiseAttack") return `${value.toFixed(3)} s`;
+    if (key === "noiseDecay") return `${value.toFixed(2)} s`;
+    if (key === "noiseSustain") return value.toFixed(2);
+    if (key === "noiseRelease") return `${value.toFixed(2)} s`;
+    if (key === "noiseTrigLen") return `${value.toFixed(2)} s`;
+    if (key === "noiseLPF") return `${Math.round(value)} Hz`;
+    if (key === "noiseHPF") return `${Math.round(value)} Hz`;
+    if (key === "noiseRes") return value.toFixed(1);
+    if (key === "noiseBPF") return `${Math.round(value)} Hz`;
+    if (key === "noiseBPWidth") return value.toFixed(2);
+    if (key === "noiseSweepAmt") return value.toFixed(2);
+    if (key === "noiseSweepTime") return `${value.toFixed(2)} s`;
+    if (key === "noiseDrive") return value.toFixed(2);
+    if (key === "noiseFlutterAmt") return value.toFixed(2);
+    if (key === "noiseFlutterRate") return `${value.toFixed(1)} Hz`;
     if (key === "baseHz") return `${Math.round(value)} Hz`;
     if (key === "bassHz") return `${Math.round(value)} Hz`;
     if (key === "bassLP") return `${Math.round(value)} Hz`;
@@ -833,7 +1041,7 @@
       if (out) out.textContent = formatValue(key, p[key]);
 
       applyVoice(state.active);
-      if (key === "mode") applyModeVisibility(p.mode);
+      if (key === "mode" || key === "noiseBehavior") applyModeVisibility(p.mode);
     };
 
     controls.addEventListener("input", onControlChange);
@@ -846,6 +1054,12 @@
       const m = row.dataset.mode;
       const show = m === "all" || m === mode;
       row.style.display = show ? "" : "none";
+    });
+    const p = state.voiceParams[state.active] || {};
+    const oneShotRows = controls.querySelectorAll("[data-noise-oneshot]");
+    oneShotRows.forEach((row) => {
+      if (mode !== "noise") return;
+      row.style.display = p.noiseBehavior === "oneshot" ? "" : "none";
     });
   }
 

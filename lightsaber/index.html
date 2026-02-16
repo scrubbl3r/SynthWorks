@@ -36,7 +36,118 @@
           <select data-param="mode">
             <option value="texture">Texture</option>
             <option value="bass">Bass</option>
+            <option value="noise">Noise</option>
           </select>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Noise Type</span>
+          <select data-param="noiseType">
+            <option value="white">White</option>
+            <option value="pink">Pink</option>
+            <option value="bit">Bit</option>
+            <option value="metallic">Metallic</option>
+          </select>
+          <output data-out="noiseType"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Behavior</span>
+          <select data-param="noiseBehavior">
+            <option value="sustain">Sustain</option>
+            <option value="oneshot">One-shot</option>
+          </select>
+          <output data-out="noiseBehavior"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Attack</span>
+          <input type="range" min="0.001" max="1.5" step="0.001" data-param="noiseAttack" />
+          <output data-out="noiseAttack"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Decay</span>
+          <input type="range" min="0.01" max="3" step="0.01" data-param="noiseDecay" />
+          <output data-out="noiseDecay"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Sustain</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseSustain" />
+          <output data-out="noiseSustain"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Release</span>
+          <input type="range" min="0.01" max="4" step="0.01" data-param="noiseRelease" />
+          <output data-out="noiseRelease"></output>
+        </label>
+
+        <label class="row" data-mode="noise" data-noise-oneshot="1">
+          <span>Trigger Length</span>
+          <input type="range" min="0.02" max="2" step="0.01" data-param="noiseTrigLen" />
+          <output data-out="noiseTrigLen"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Low Pass Filter</span>
+          <input type="range" min="100" max="12000" step="1" data-param="noiseLPF" />
+          <output data-out="noiseLPF"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Filter Resonance</span>
+          <input type="range" min="0.2" max="12" step="0.1" data-param="noiseRes" />
+          <output data-out="noiseRes"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>High Pass Filter</span>
+          <input type="range" min="20" max="4000" step="1" data-param="noiseHPF" />
+          <output data-out="noiseHPF"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Bandpass Center</span>
+          <input type="range" min="80" max="8000" step="1" data-param="noiseBPF" />
+          <output data-out="noiseBPF"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Bandpass Width</span>
+          <input type="range" min="0.1" max="1" step="0.01" data-param="noiseBPWidth" />
+          <output data-out="noiseBPWidth"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Sweep Amount</span>
+          <input type="range" min="-1" max="1" step="0.01" data-param="noiseSweepAmt" />
+          <output data-out="noiseSweepAmt"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Sweep Time</span>
+          <input type="range" min="0.01" max="2" step="0.01" data-param="noiseSweepTime" />
+          <output data-out="noiseSweepTime"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Drive</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseDrive" />
+          <output data-out="noiseDrive"></output>
+        </label>
+
+        <label class="row noiseModRow" data-mode="noise">
+          <span>Flutter Amount</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseFlutterAmt" />
+          <output data-out="noiseFlutterAmt"></output>
+        </label>
+
+        <label class="row noiseModRow" data-mode="noise">
+          <span>Flutter Speed</span>
+          <input type="range" min="0" max="20" step="0.1" data-param="noiseFlutterRate" />
+          <output data-out="noiseFlutterRate"></output>
         </label>
 
         <label class="row" data-mode="texture">
