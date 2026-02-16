@@ -53,10 +53,13 @@
 
         <label class="row" data-mode="noise">
           <span>Behavior</span>
-          <select data-param="noiseBehavior">
-            <option value="sustain">Sustain</option>
-            <option value="oneshot">One-shot</option>
-          </select>
+          <div class="rowInline">
+            <select data-param="noiseBehavior">
+              <option value="sustain">Sustain</option>
+              <option value="oneshot">One-shot</option>
+            </select>
+            <button id="noisePlayBtn" class="miniActionBtn" type="button">Play</button>
+          </div>
           <output data-out="noiseBehavior"></output>
         </label>
 

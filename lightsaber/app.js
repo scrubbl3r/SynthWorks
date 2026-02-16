@@ -4,6 +4,7 @@
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
+  const noisePlayBtn = document.getElementById("noisePlayBtn");
   const startOverlay = document.getElementById("startOverlay");
   const startBtn = document.getElementById("startBtn");
 
@@ -484,7 +485,8 @@
       noiseModeBP.Q.setTargetAtTime(clamp(lerp(11, 0.8, clamp01(p.noiseBPWidth)) * profile.resMul, 0.2, 18), t, 0.04);
     }
 
-    function apply(p, muted, width, basePan) {
+    function apply(p, muted, width, basePan, opts = {}) {
+      const forceNoiseTrigger = !!opts.forceNoiseTrigger;
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
@@ -591,7 +593,7 @@
           if (muted) {
             noiseModeGain.gain.cancelScheduledValues(t);
             noiseModeGain.gain.setTargetAtTime(0, t, 0.02);
-          } else if (t >= oneShotCooldownUntil) {
+          } else if (forceNoiseTrigger || t >= oneShotCooldownUntil) {
             triggerNoiseOneShot(p, t, noiseGainValue);
             oneShotCooldownUntil = t + clamp(p.noiseTrigLen, 0.02, 2) * 0.8 + 0.04;
           }
@@ -740,10 +742,10 @@
     return !!state.muted[index];
   }
 
-  function applyVoice(index) {
+  function applyVoice(index, opts = {}) {
     const p = state.voiceParams[index];
     if (!p || !state.voices[index]) return;
-    state.voices[index].apply(p, effectiveMuted(index), p.stereoWidth, basePanFor(index));
+    state.voices[index].apply(p, effectiveMuted(index), p.stereoWidth, basePanFor(index), opts);
   }
 
   function applyAllVoices() {
@@ -970,6 +972,11 @@
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
+    if (noisePlayBtn) {
+      const showPlay = hasActive && p && p.mode === "noise" && p.noiseBehavior === "oneshot";
+      noisePlayBtn.style.display = showPlay ? "inline-flex" : "none";
+      noisePlayBtn.disabled = !showPlay || effectiveMuted(activeIndex);
+    }
     applyModeVisibility(p && p.mode ? p.mode : "texture");
   }
 
@@ -1046,6 +1053,17 @@
 
     controls.addEventListener("input", onControlChange);
     controls.addEventListener("change", onControlChange);
+
+    if (noisePlayBtn) {
+      noisePlayBtn.addEventListener("click", async () => {
+        const i = state.active;
+        if (!state.activeTracks[i]) return;
+        const p = state.voiceParams[i];
+        if (!p || p.mode !== "noise" || p.noiseBehavior !== "oneshot") return;
+        await startAudio();
+        applyVoice(i, { forceNoiseTrigger: true });
+      });
+    }
   }
 
   function applyModeVisibility(mode) {
@@ -1061,6 +1079,7 @@
       if (mode !== "noise") return;
       row.style.display = p.noiseBehavior === "oneshot" ? "" : "none";
     });
+    if (noisePlayBtn && mode !== "noise") noisePlayBtn.style.display = "none";
   }
 
   async function startAudio() {

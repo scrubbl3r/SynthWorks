@@ -335,6 +335,25 @@ body{
   width:100%;
 }
 
+.miniActionBtn{
+  min-width:72px;
+  height:32px;
+  border:var(--stroke) solid var(--ink);
+  background:transparent;
+  color:var(--ink);
+  text-transform:uppercase;
+  letter-spacing:0.7px;
+  font-size:11px;
+  font-weight:900;
+  padding:0 10px;
+  cursor:pointer;
+}
+
+.miniActionBtn:disabled{
+  opacity:0.4;
+  cursor:not-allowed;
+}
+
 .inlineToggle{
   display:flex;
   align-items:center;
