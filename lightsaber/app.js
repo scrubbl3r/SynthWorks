@@ -236,6 +236,53 @@
     p.noiseDms = d;
   }
 
+  function rebalanceNoiseEnvelope(p, changedKey, rawValue) {
+    const keys = ["noiseAms", "noiseSms", "noiseDms"];
+    if (!keys.includes(changedKey)) return;
+    const next = {
+      noiseAms: Math.max(0, Math.round(p.noiseAms || 0)),
+      noiseSms: Math.max(0, Math.round(p.noiseSms || 0)),
+      noiseDms: Math.max(0, Math.round(p.noiseDms || 0))
+    };
+    const order = {
+      noiseAms: ["noiseSms", "noiseDms"],
+      noiseSms: ["noiseDms", "noiseAms"],
+      noiseDms: ["noiseSms", "noiseAms"]
+    };
+
+    let value = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
+    const old = next[changedKey];
+    const delta = value - old;
+    next[changedKey] = value;
+
+    if (delta > 0) {
+      let need = delta;
+      for (const k of order[changedKey]) {
+        if (need <= 0) break;
+        const take = Math.min(next[k], need);
+        next[k] -= take;
+        need -= take;
+      }
+      if (need > 0) {
+        next[changedKey] = Math.max(0, next[changedKey] - need);
+      }
+    } else if (delta < 0) {
+      let free = -delta;
+      for (const k of order[changedKey]) {
+        if (free <= 0) break;
+        const room = NOISE_ENV_TOTAL_MS - next[k];
+        const add = Math.min(room, free);
+        next[k] += add;
+        free -= add;
+      }
+    }
+
+    p.noiseAms = next.noiseAms;
+    p.noiseSms = next.noiseSms;
+    p.noiseDms = next.noiseDms;
+    normalizeNoiseEnvelope(p);
+  }
+
   function updateNoiseEnvelopeViz(p) {
     if (!noiseEnvLine || !p) return;
     const total = Math.max(1, p.noiseAms + p.noiseSms + p.noiseDms);
@@ -1088,7 +1135,7 @@
       }
 
       if (key === "noiseAms" || key === "noiseSms" || key === "noiseDms") {
-        normalizeNoiseEnvelope(p, key);
+        rebalanceNoiseEnvelope(p, key, p[key]);
         const aIn = controls.querySelector("[data-param='noiseAms']");
         const sIn = controls.querySelector("[data-param='noiseSms']");
         const dIn = controls.querySelector("[data-param='noiseDms']");
