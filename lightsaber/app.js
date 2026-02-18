@@ -4,6 +4,7 @@
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
+  const randomizeModesWrap = document.getElementById("randomizeModes");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
   const noiseEnvLine = document.getElementById("noiseEnvLine");
   const startOverlay = document.getElementById("startOverlay");
@@ -165,9 +166,19 @@
     };
   };
 
-  function randomizeVoice(p) {
+  function getEnabledRandomModes() {
+    if (!randomizeModesWrap) return ["texture", "bass", "noise"];
+    const boxes = randomizeModesWrap.querySelectorAll("input[data-randomize-mode]");
+    const enabled = [];
+    boxes.forEach((b) => {
+      if (b.checked) enabled.push(b.dataset.randomizeMode);
+    });
+    return enabled.length ? enabled : ["texture", "bass", "noise"];
+  }
+
+  function randomizeVoice(p, modePool) {
     const rand = RNG.next.bind(RNG);
-    const mode = RNG.pick(["texture", "bass", "noise"]);
+    const mode = RNG.pick(modePool && modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
@@ -1251,6 +1262,7 @@
 
   function regenerate() {
     startAudio();
+    const modePool = getEnabledRandomModes();
     for (let i = 0; i < state.voiceParams.length; i++) {
       if (!state.activeTracks[i]) continue;
       if (state.frozen[i]) continue;
@@ -1260,7 +1272,7 @@
         stereoWidth: p.stereoWidth ?? 0.5,
         spatialize: p.spatialize ?? 0.5
       };
-      randomizeVoice(p);
+      randomizeVoice(p, modePool);
       p.gain = keep.gain;
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;

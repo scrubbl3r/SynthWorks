@@ -303,6 +303,20 @@ body{
   color:var(--muted);
 }
 
+.randomizeModes{
+  display:grid;
+  gap:8px;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:0.7px;
+}
+
+.randomizeModes label{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
 .controls{
   display:grid;
   gap:10px;
