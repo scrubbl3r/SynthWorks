@@ -412,18 +412,6 @@ body{
 }
 
 .envA{ z-index:3; }
-.envEnd{
-  z-index:0;
-  pointer-events:none;
-}
-
-.envEnd::-webkit-slider-thumb{
-  background:var(--ink);
-}
-
-.envEnd::-moz-range-thumb{
-  background:var(--ink);
-}
 
 .envRailLabels{
   position:absolute;
