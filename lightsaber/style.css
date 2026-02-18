@@ -412,8 +412,6 @@ body{
 }
 
 .envA{ z-index:3; }
-.envS{ z-index:2; }
-.envD{ z-index:1; }
 .envEnd{
   z-index:0;
   pointer-events:none;
@@ -433,7 +431,7 @@ body{
   right:0;
   bottom:0;
   display:flex;
-  justify-content:space-between;
+  justify-content:flex-start;
   font-size:10px;
   letter-spacing:0.6px;
 }
