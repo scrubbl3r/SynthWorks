@@ -79,15 +79,27 @@
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Low Pass Filter</span>
-          <input type="range" min="100" max="12000" step="1" data-param="noiseLPF" />
-          <output data-out="noiseLPF"></output>
+          <span>Noise Env Peak</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noisePeak" />
+          <output data-out="noisePeak"></output>
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Filter Resonance</span>
-          <input type="range" min="0.2" max="12" step="0.1" data-param="noiseRes" />
-          <output data-out="noiseRes"></output>
+          <span>LP Sweep Start</span>
+          <input type="range" min="200" max="12000" step="1" data-param="noiseLPStart" />
+          <output data-out="noiseLPStart"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>LP Sweep End</span>
+          <input type="range" min="40" max="4000" step="1" data-param="noiseLPEnd" />
+          <output data-out="noiseLPEnd"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Sweep Time</span>
+          <input type="range" min="0.05" max="4" step="0.01" data-param="noiseSweepTime" />
+          <output data-out="noiseSweepTime"></output>
         </label>
 
         <label class="row" data-mode="noise">
@@ -97,45 +109,63 @@
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Bandpass Center</span>
-          <input type="range" min="80" max="8000" step="1" data-param="noiseBPF" />
-          <output data-out="noiseBPF"></output>
+          <span>Resonance</span>
+          <input type="range" min="0.2" max="12" step="0.1" data-param="noiseRes" />
+          <output data-out="noiseRes"></output>
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Bandpass Width</span>
-          <input type="range" min="0.1" max="1" step="0.01" data-param="noiseBPWidth" />
-          <output data-out="noiseBPWidth"></output>
+          <span>Boom Freq</span>
+          <input type="range" min="10" max="200" step="1" data-param="noiseBoomHz" />
+          <output data-out="noiseBoomHz"></output>
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Sweep Amount</span>
-          <input type="range" min="-1" max="1" step="0.01" data-param="noiseSweepAmt" />
-          <output data-out="noiseSweepAmt"></output>
+          <span>Boom Amt</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseBoomAmt" />
+          <output data-out="noiseBoomAmt"></output>
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Sweep Time</span>
-          <input type="range" min="0.01" max="2" step="0.01" data-param="noiseSweepTime" />
-          <output data-out="noiseSweepTime"></output>
+          <span>Boom Drop</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseBoomDrop" />
+          <output data-out="noiseBoomDrop"></output>
         </label>
 
         <label class="row" data-mode="noise">
-          <span>Drive</span>
-          <input type="range" min="0" max="1" step="0.01" data-param="noiseDrive" />
-          <output data-out="noiseDrive"></output>
+          <span>Ring Freq</span>
+          <input type="range" min="30" max="1600" step="1" data-param="noiseRingHz" />
+          <output data-out="noiseRingHz"></output>
         </label>
 
-        <label class="row noiseModRow" data-mode="noise">
-          <span>Flutter Amount</span>
-          <input type="range" min="0" max="1" step="0.01" data-param="noiseFlutterAmt" />
-          <output data-out="noiseFlutterAmt"></output>
+        <label class="row" data-mode="noise">
+          <span>Ring Amt</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseRingAmt" />
+          <output data-out="noiseRingAmt"></output>
         </label>
 
-        <label class="row noiseModRow" data-mode="noise">
-          <span>Flutter Speed</span>
-          <input type="range" min="0" max="20" step="0.1" data-param="noiseFlutterRate" />
-          <output data-out="noiseFlutterRate"></output>
+        <label class="row" data-mode="noise">
+          <span>Ring Drop</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseRingDrop" />
+          <output data-out="noiseRingDrop"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Crackle Amt</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseCrackleAmt" />
+          <output data-out="noiseCrackleAmt"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Crackle HPF</span>
+          <input type="range" min="500" max="8000" step="1" data-param="noiseCrackleHPF" />
+          <output data-out="noiseCrackleHPF"></output>
+        </label>
+
+        <label class="row" data-mode="noise">
+          <span>Edge Drive</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="noiseEdgeDrive" />
+          <output data-out="noiseEdgeDrive"></output>
         </label>
 
         <label class="row" data-mode="texture">

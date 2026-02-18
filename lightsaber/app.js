@@ -48,16 +48,21 @@
     { key: "noiseSms", label: "Noise S ms" },
     { key: "noiseDms", label: "Noise D ms" },
     { key: "noiseEnvelope", label: "Noise Envelope" },
-    { key: "noiseLPF", label: "Noise LPF" },
-    { key: "noiseRes", label: "Noise Resonance" },
-    { key: "noiseHPF", label: "Noise HPF" },
-    { key: "noiseBPF", label: "Noise BPF" },
-    { key: "noiseBPWidth", label: "Noise BP Width" },
-    { key: "noiseSweepAmt", label: "Noise Sweep Amount" },
+    { key: "noisePeak", label: "Noise Env Peak" },
+    { key: "noiseLPStart", label: "Noise LP Start" },
+    { key: "noiseLPEnd", label: "Noise LP End" },
     { key: "noiseSweepTime", label: "Noise Sweep Time" },
-    { key: "noiseDrive", label: "Noise Drive" },
-    { key: "noiseFlutterAmt", label: "Noise Flutter Amount" },
-    { key: "noiseFlutterRate", label: "Noise Flutter Rate" },
+    { key: "noiseHPF", label: "Noise HPF" },
+    { key: "noiseRes", label: "Noise Resonance" },
+    { key: "noiseBoomHz", label: "Noise Boom Hz" },
+    { key: "noiseBoomAmt", label: "Noise Boom Amt" },
+    { key: "noiseBoomDrop", label: "Noise Boom Drop" },
+    { key: "noiseRingHz", label: "Noise Ring Hz" },
+    { key: "noiseRingAmt", label: "Noise Ring Amt" },
+    { key: "noiseRingDrop", label: "Noise Ring Drop" },
+    { key: "noiseCrackleAmt", label: "Noise Crackle Amt" },
+    { key: "noiseCrackleHPF", label: "Noise Crackle HPF" },
+    { key: "noiseEdgeDrive", label: "Noise Edge Drive" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "gain", label: "Voice Gain" }
@@ -139,16 +144,21 @@
       noiseAms: ep.a,
       noiseSms: ep.s,
       noiseDms: ep.d,
-      noiseLPF: Math.round(RNG.range(350, 9000)),
-      noiseRes: +RNG.range(0.4, 5.0).toFixed(1),
+      noisePeak: +RNG.range(0.35, 1.0).toFixed(2),
+      noiseLPStart: Math.round(RNG.range(1200, 9000)),
+      noiseLPEnd: Math.round(RNG.range(80, 900)),
+      noiseSweepTime: +RNG.range(0.15, 1.4).toFixed(2),
       noiseHPF: Math.round(RNG.range(20, 1200)),
-      noiseBPF: Math.round(RNG.range(130, 3200)),
-      noiseBPWidth: +RNG.range(0.2, 0.85).toFixed(2),
-      noiseSweepAmt: +RNG.range(-0.9, 0.9).toFixed(2),
-      noiseSweepTime: +RNG.range(0.03, 0.9).toFixed(2),
-      noiseDrive: +RNG.range(0.0, 0.9).toFixed(2),
-      noiseFlutterAmt: +RNG.range(0.0, 0.45).toFixed(2),
-      noiseFlutterRate: +RNG.range(0.0, 10.0).toFixed(1),
+      noiseRes: +RNG.range(0.4, 5.0).toFixed(1),
+      noiseBoomHz: Math.round(RNG.range(28, 90)),
+      noiseBoomAmt: +RNG.range(0.1, 0.95).toFixed(2),
+      noiseBoomDrop: +RNG.range(0.2, 0.9).toFixed(2),
+      noiseRingHz: Math.round(RNG.range(90, 520)),
+      noiseRingAmt: +RNG.range(0.0, 0.55).toFixed(2),
+      noiseRingDrop: +RNG.range(0.2, 0.9).toFixed(2),
+      noiseCrackleAmt: +RNG.range(0.0, 0.45).toFixed(2),
+      noiseCrackleHPF: Math.round(RNG.range(900, 3200)),
+      noiseEdgeDrive: +RNG.range(0.15, 0.85).toFixed(2),
       stereoWidth: 0.5,
       spatialize: 0.5,
       gain: 0.5
@@ -204,16 +214,21 @@
     p.noiseAms = ep.a;
     p.noiseSms = ep.s;
     p.noiseDms = ep.d;
-    p.noiseLPF = Math.round(RNG.range(200, 12000));
-    p.noiseRes = +RNG.range(0.2, 8.5).toFixed(1);
+    p.noisePeak = +RNG.range(0.2, 1.0).toFixed(2);
+    p.noiseLPStart = Math.round(RNG.range(600, 12000));
+    p.noiseLPEnd = Math.round(RNG.range(40, 1800));
+    p.noiseSweepTime = +RNG.range(0.08, 3.5).toFixed(2);
     p.noiseHPF = Math.round(RNG.range(20, 2500));
-    p.noiseBPF = Math.round(RNG.range(100, 7000));
-    p.noiseBPWidth = +RNG.range(0.1, 1.0).toFixed(2);
-    p.noiseSweepAmt = +RNG.range(-1, 1).toFixed(2);
-    p.noiseSweepTime = +RNG.range(0.01, 1.8).toFixed(2);
-    p.noiseDrive = +RNG.range(0, 1).toFixed(2);
-    p.noiseFlutterAmt = +RNG.range(0, 0.9).toFixed(2);
-    p.noiseFlutterRate = +RNG.range(0, 20).toFixed(1);
+    p.noiseRes = +RNG.range(0.2, 8.5).toFixed(1);
+    p.noiseBoomHz = Math.round(RNG.range(12, 160));
+    p.noiseBoomAmt = +RNG.range(0.05, 1.0).toFixed(2);
+    p.noiseBoomDrop = +RNG.range(0.1, 1.0).toFixed(2);
+    p.noiseRingHz = Math.round(RNG.range(30, 1600));
+    p.noiseRingAmt = +RNG.range(0.0, 1.0).toFixed(2);
+    p.noiseRingDrop = +RNG.range(0.1, 1.0).toFixed(2);
+    p.noiseCrackleAmt = +RNG.range(0.0, 1.0).toFixed(2);
+    p.noiseCrackleHPF = Math.round(RNG.range(500, 8000));
+    p.noiseEdgeDrive = +RNG.range(0, 1).toFixed(2);
     normalizeNoiseEnvelope(p);
   }
 
@@ -366,28 +381,39 @@
     noiseModeLP.type = "lowpass";
     noiseModeLP.frequency.value = 4000;
 
-    const noiseModeBP = ctx.createBiquadFilter();
-    noiseModeBP.type = "bandpass";
-    noiseModeBP.frequency.value = 900;
-    noiseModeBP.Q.value = 2.0;
-
-    const noiseModeDrive = makeDrive(ctx);
+    const noiseModeEdge = makeDrive(ctx);
     const noiseModeGain = ctx.createGain();
     noiseModeGain.gain.value = 0.0;
 
-    const noiseFlutterOsc = ctx.createOscillator();
-    noiseFlutterOsc.type = "sine";
-    noiseFlutterOsc.frequency.value = 0;
-    const noiseFlutterGain = ctx.createGain();
-    noiseFlutterGain.gain.value = 0;
-    noiseFlutterOsc.connect(noiseFlutterGain);
-    noiseFlutterGain.connect(noiseModeBP.frequency);
+    const noiseCrackleHP = ctx.createBiquadFilter();
+    noiseCrackleHP.type = "highpass";
+    noiseCrackleHP.frequency.value = 1400;
+    const noiseCrackleGain = ctx.createGain();
+    noiseCrackleGain.gain.value = 0.0;
+
+    const noiseBoomOsc = ctx.createOscillator();
+    noiseBoomOsc.type = "sine";
+    noiseBoomOsc.frequency.value = 50;
+    const noiseBoomGain = ctx.createGain();
+    noiseBoomGain.gain.value = 0.0;
+
+    const noiseRingOsc = ctx.createOscillator();
+    noiseRingOsc.type = "square";
+    noiseRingOsc.frequency.value = 220;
+    const noiseRingEdge = makeDrive(ctx);
+    const noiseRingGain = ctx.createGain();
+    noiseRingGain.gain.value = 0.0;
 
     noise.connect(noiseModeHP);
     noiseModeHP.connect(noiseModeLP);
-    noiseModeLP.connect(noiseModeBP);
-    noiseModeBP.connect(noiseModeDrive.input);
-    noiseModeDrive.output.connect(noiseModeGain);
+    noiseModeLP.connect(noiseModeEdge.input);
+    noiseModeEdge.output.connect(noiseModeGain);
+
+    noise.connect(noiseCrackleHP);
+    noiseCrackleHP.connect(noiseCrackleGain);
+    noiseBoomOsc.connect(noiseBoomGain);
+    noiseRingOsc.connect(noiseRingEdge.input);
+    noiseRingEdge.output.connect(noiseRingGain);
 
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
@@ -410,6 +436,9 @@
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
     noiseModeGain.connect(panner);
+    noiseCrackleGain.connect(panner);
+    noiseBoomGain.connect(panner);
+    noiseRingGain.connect(panner);
 
     const spatialBands = [];
     const centers = [120, 220, 380, 620, 980, 1600, 2600, 4200];
@@ -487,7 +516,8 @@
     bassLfoLPF.start();
     bassLfoRes.start();
     bassLfoDrive.start();
-    noiseFlutterOsc.start();
+    noiseBoomOsc.start();
+    noiseRingOsc.start();
 
     oscA.start();
     oscB.start();
@@ -497,16 +527,24 @@
 
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
-    let lastNoiseType = "";
 
     function noiseTypeProfile(noiseType) {
-      if (noiseType === "pink") return { hpMul: 0.5, lpMul: 0.8, resMul: 0.8, driveAdd: -0.08, flutterMul: 0.8 };
-      if (noiseType === "bit") return { hpMul: 1.4, lpMul: 0.7, resMul: 1.4, driveAdd: 0.35, flutterMul: 1.6 };
-      if (noiseType === "metallic") return { hpMul: 1.1, lpMul: 1.2, resMul: 1.8, driveAdd: 0.2, flutterMul: 1.3 };
-      return { hpMul: 1.0, lpMul: 1.0, resMul: 1.0, driveAdd: 0.0, flutterMul: 1.0 };
+      if (noiseType === "pink") return { hpMul: 0.55, lpMul: 0.85, resMul: 0.8, edgeAdd: -0.08 };
+      if (noiseType === "bit") return { hpMul: 1.4, lpMul: 0.7, resMul: 1.3, edgeAdd: 0.25 };
+      if (noiseType === "metallic") return { hpMul: 1.15, lpMul: 1.1, resMul: 1.7, edgeAdd: 0.18 };
+      return { hpMul: 1.0, lpMul: 1.0, resMul: 1.0, edgeAdd: 0.0 };
+    }
+
+    function applyOneShotEnv(node, t, a, s, d, peak) {
+      node.gain.cancelScheduledValues(t);
+      node.gain.setValueAtTime(0, t);
+      node.gain.linearRampToValueAtTime(peak, t + a);
+      node.gain.setValueAtTime(peak, t + a + s);
+      node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
     function triggerNoiseOneShot(p, t, level) {
+      const profile = noiseTypeProfile(p.noiseType);
       const ep = effectiveNoiseEndpoints(p);
       const aMs = ep.a;
       const sMs = clamp(ep.s - ep.a, 0, NOISE_ENV_TOTAL_MS);
@@ -514,26 +552,31 @@
       const a = aMs / 1000;
       const s = sMs / 1000;
       const d = dMs / 1000;
-      const peak = level;
+      const peak = level * clamp01(p.noisePeak);
 
-      noiseModeGain.gain.cancelScheduledValues(t);
-      noiseModeGain.gain.setValueAtTime(0, t);
-      noiseModeGain.gain.linearRampToValueAtTime(peak, t + a);
-      noiseModeGain.gain.setValueAtTime(peak, t + a + s);
-      noiseModeGain.gain.linearRampToValueAtTime(0, t + a + s + d);
-    }
+      const lp0 = clamp(p.noiseLPStart * profile.lpMul, 100, 12000);
+      const lp1 = clamp(p.noiseLPEnd * profile.lpMul, 40, 4000);
+      const sweepT = Math.min(clamp(p.noiseSweepTime, 0.05, 4), Math.max(0.05, ep.d / 1000));
+      noiseModeLP.frequency.cancelScheduledValues(t);
+      noiseModeLP.frequency.setValueAtTime(lp0, t);
+      noiseModeLP.frequency.exponentialRampToValueAtTime(Math.max(30, lp1), t + sweepT);
 
-    function applyNoiseSweep(p, t, profile) {
-      const base = clamp(p.noiseBPF, 80, 8000);
-      const sweepAmt = clamp(p.noiseSweepAmt, -1, 1);
-      const sweepTime = clamp(p.noiseSweepTime, 0.01, 2);
-      const target = clamp(base * Math.pow(2, sweepAmt * 2), 60, 12000);
-      const start = sweepAmt >= 0 ? base : target;
-      const end = sweepAmt >= 0 ? target : base;
-      noiseModeBP.frequency.cancelScheduledValues(t);
-      noiseModeBP.frequency.setValueAtTime(start, t);
-      noiseModeBP.frequency.linearRampToValueAtTime(end, t + sweepTime);
-      noiseModeBP.Q.setTargetAtTime(clamp(lerp(11, 0.8, clamp01(p.noiseBPWidth)) * profile.resMul, 0.2, 18), t, 0.04);
+      const boomStart = clamp(p.noiseBoomHz, 10, 220);
+      const boomEnd = clamp(lerp(boomStart, boomStart * 0.25, clamp01(p.noiseBoomDrop)), 8, 220);
+      noiseBoomOsc.frequency.cancelScheduledValues(t);
+      noiseBoomOsc.frequency.setValueAtTime(boomStart, t);
+      noiseBoomOsc.frequency.exponentialRampToValueAtTime(boomEnd, t + Math.max(0.06, d * 0.9));
+
+      const ringStart = clamp(p.noiseRingHz, 20, 2400);
+      const ringEnd = clamp(lerp(ringStart, ringStart * 0.35, clamp01(p.noiseRingDrop)), 10, 2400);
+      noiseRingOsc.frequency.cancelScheduledValues(t);
+      noiseRingOsc.frequency.setValueAtTime(ringStart, t);
+      noiseRingOsc.frequency.exponentialRampToValueAtTime(ringEnd, t + Math.max(0.05, d * 0.75));
+
+      applyOneShotEnv(noiseModeGain, t, a, s, d, peak);
+      applyOneShotEnv(noiseBoomGain, t, Math.max(0.002, a * 0.35), s, d, peak * clamp01(p.noiseBoomAmt));
+      applyOneShotEnv(noiseRingGain, t, Math.max(0.002, a * 0.4), s, d, peak * clamp01(p.noiseRingAmt));
+      applyOneShotEnv(noiseCrackleGain, t, 0.001, Math.max(0, s * 0.3), Math.max(0.02, d * 0.55), peak * clamp01(p.noiseCrackleAmt));
     }
 
     function apply(p, muted, width, basePan, opts = {}) {
@@ -620,30 +663,30 @@
 
       if (isNoise) {
         const profile = noiseTypeProfile(p.noiseType);
-        if (p.noiseType !== lastNoiseType) {
-          lastNoiseType = p.noiseType;
-        }
-
-        noiseModeHP.frequency.setTargetAtTime(clamp(p.noiseHPF * profile.hpMul, 20, 4000), t, 0.04);
-        noiseModeLP.frequency.setTargetAtTime(clamp(p.noiseLPF * profile.lpMul, 100, 12000), t, 0.04);
+        noiseModeHP.frequency.setTargetAtTime(clamp(p.noiseHPF * profile.hpMul, 20, 4000), t, 0.03);
+        noiseModeLP.frequency.setTargetAtTime(clamp(p.noiseLPStart * profile.lpMul, 100, 12000), t, 0.03);
         noiseModeLP.Q.setTargetAtTime(clamp(p.noiseRes * profile.resMul, 0.2, 12), t, 0.04);
-        noiseModeDrive.setAmount(clamp01(p.noiseDrive + profile.driveAdd));
-
-        const flutterRate = clamp(p.noiseFlutterRate, 0, 20);
-        const flutterDepth = clamp01(p.noiseFlutterAmt) * profile.flutterMul;
-        noiseFlutterOsc.frequency.setTargetAtTime(flutterRate, t, 0.08);
-        noiseFlutterGain.gain.setTargetAtTime(clamp(p.noiseBPF * 0.2 * flutterDepth, 0, 2500), t, 0.08);
-        applyNoiseSweep(p, t, profile);
+        noiseModeEdge.setAmount(clamp01(p.noiseEdgeDrive + profile.edgeAdd));
+        noiseCrackleHP.frequency.setTargetAtTime(clamp(p.noiseCrackleHPF, 500, 8000), t, 0.03);
+        noiseRingEdge.setAmount(clamp01(0.4 + p.noiseEdgeDrive * 0.6));
+        noiseBoomOsc.frequency.setTargetAtTime(clamp(p.noiseBoomHz, 10, 220), t, 0.04);
+        noiseRingOsc.frequency.setTargetAtTime(clamp(p.noiseRingHz, 20, 2400), t, 0.04);
 
         if (p.noiseBehavior === "oneshot") {
           if (noiseGateOn) {
             noiseModeGain.gain.cancelScheduledValues(t);
             noiseModeGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseBoomGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseRingGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseCrackleGain.gain.setTargetAtTime(0, t, 0.02);
             noiseGateOn = false;
           }
           if (muted) {
             noiseModeGain.gain.cancelScheduledValues(t);
             noiseModeGain.gain.setTargetAtTime(0, t, 0.02);
+            noiseBoomGain.gain.setTargetAtTime(0, t, 0.02);
+            noiseRingGain.gain.setTargetAtTime(0, t, 0.02);
+            noiseCrackleGain.gain.setTargetAtTime(0, t, 0.02);
           } else if (forceNoiseTrigger || t >= oneShotCooldownUntil) {
             triggerNoiseOneShot(p, t, noiseGainValue);
             const ep = effectiveNoiseEndpoints(p);
@@ -651,29 +694,43 @@
           }
         } else {
           oneShotCooldownUntil = 0;
-          const sustainLevel = noiseGainValue;
+          const sustainLevel = noiseGainValue * clamp01(p.noisePeak);
 
           if (!muted) {
             if (!noiseGateOn) {
               noiseModeGain.gain.cancelScheduledValues(t);
               noiseModeGain.gain.setValueAtTime(0, t);
               noiseModeGain.gain.linearRampToValueAtTime(noiseGainValue, t + 0.02);
+              noiseBoomGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseBoomAmt), t + 0.02, 0.04);
+              noiseRingGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseRingAmt), t + 0.02, 0.04);
+              noiseCrackleGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseCrackleAmt), t + 0.02, 0.03);
               noiseGateOn = true;
             } else {
               noiseModeGain.gain.setTargetAtTime(sustainLevel, t, 0.08);
+              noiseBoomGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseBoomAmt), t, 0.08);
+              noiseRingGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseRingAmt), t, 0.08);
+              noiseCrackleGain.gain.setTargetAtTime(sustainLevel * clamp01(p.noiseCrackleAmt), t, 0.06);
             }
           } else if (noiseGateOn) {
             noiseModeGain.gain.cancelScheduledValues(t);
             noiseModeGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseBoomGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseRingGain.gain.setTargetAtTime(0, t, 0.03);
+            noiseCrackleGain.gain.setTargetAtTime(0, t, 0.03);
             noiseGateOn = false;
           } else {
             noiseModeGain.gain.setTargetAtTime(0, t, 0.05);
+            noiseBoomGain.gain.setTargetAtTime(0, t, 0.05);
+            noiseRingGain.gain.setTargetAtTime(0, t, 0.05);
+            noiseCrackleGain.gain.setTargetAtTime(0, t, 0.05);
           }
         }
       } else {
         if (noiseGateOn) noiseGateOn = false;
         noiseModeGain.gain.setTargetAtTime(0, t, 0.05);
-        noiseFlutterGain.gain.setTargetAtTime(0, t, 0.05);
+        noiseBoomGain.gain.setTargetAtTime(0, t, 0.05);
+        noiseRingGain.gain.setTargetAtTime(0, t, 0.05);
+        noiseCrackleGain.gain.setTargetAtTime(0, t, 0.05);
         oneShotCooldownUntil = 0;
       }
 
@@ -721,6 +778,21 @@
       if (p.noiseAms == null) p.noiseAms = 400;
       if (p.noiseSms == null) p.noiseSms = 1400;
       if (p.noiseDms == null) p.noiseDms = 3200;
+      if (p.noisePeak == null) p.noisePeak = 0.8;
+      if (p.noiseLPStart == null) p.noiseLPStart = 4200;
+      if (p.noiseLPEnd == null) p.noiseLPEnd = 280;
+      if (p.noiseSweepTime == null) p.noiseSweepTime = 0.7;
+      if (p.noiseHPF == null) p.noiseHPF = 120;
+      if (p.noiseRes == null) p.noiseRes = 0.8;
+      if (p.noiseBoomHz == null) p.noiseBoomHz = 56;
+      if (p.noiseBoomAmt == null) p.noiseBoomAmt = 0.55;
+      if (p.noiseBoomDrop == null) p.noiseBoomDrop = 0.6;
+      if (p.noiseRingHz == null) p.noiseRingHz = 220;
+      if (p.noiseRingAmt == null) p.noiseRingAmt = 0.25;
+      if (p.noiseRingDrop == null) p.noiseRingDrop = 0.6;
+      if (p.noiseCrackleAmt == null) p.noiseCrackleAmt = 0.2;
+      if (p.noiseCrackleHPF == null) p.noiseCrackleHPF = 1600;
+      if (p.noiseEdgeDrive == null) p.noiseEdgeDrive = 0.45;
       normalizeNoiseEnvelope(p);
       state.voiceParams[i] = p;
       if (!state.activeTracks[i]) state.muted[i] = true;
@@ -1051,16 +1123,21 @@
     if (key === "noiseSms") return `${Math.round(value)} ms`;
     if (key === "noiseDms") return `${Math.round(value)} ms`;
     if (key === "noiseEnvelope") return `${Math.round(value || 0)} ms`;
-    if (key === "noiseLPF") return `${Math.round(value)} Hz`;
+    if (key === "noisePeak") return value.toFixed(2);
+    if (key === "noiseLPStart") return `${Math.round(value)} Hz`;
+    if (key === "noiseLPEnd") return `${Math.round(value)} Hz`;
+    if (key === "noiseSweepTime") return `${value.toFixed(2)} s`;
     if (key === "noiseHPF") return `${Math.round(value)} Hz`;
     if (key === "noiseRes") return value.toFixed(1);
-    if (key === "noiseBPF") return `${Math.round(value)} Hz`;
-    if (key === "noiseBPWidth") return value.toFixed(2);
-    if (key === "noiseSweepAmt") return value.toFixed(2);
-    if (key === "noiseSweepTime") return `${value.toFixed(2)} s`;
-    if (key === "noiseDrive") return value.toFixed(2);
-    if (key === "noiseFlutterAmt") return value.toFixed(2);
-    if (key === "noiseFlutterRate") return `${value.toFixed(1)} Hz`;
+    if (key === "noiseBoomHz") return `${Math.round(value)} Hz`;
+    if (key === "noiseBoomAmt") return value.toFixed(2);
+    if (key === "noiseBoomDrop") return value.toFixed(2);
+    if (key === "noiseRingHz") return `${Math.round(value)} Hz`;
+    if (key === "noiseRingAmt") return value.toFixed(2);
+    if (key === "noiseRingDrop") return value.toFixed(2);
+    if (key === "noiseCrackleAmt") return value.toFixed(2);
+    if (key === "noiseCrackleHPF") return `${Math.round(value)} Hz`;
+    if (key === "noiseEdgeDrive") return value.toFixed(2);
     if (key === "baseHz") return `${Math.round(value)} Hz`;
     if (key === "bassHz") return `${Math.round(value)} Hz`;
     if (key === "bassLP") return `${Math.round(value)} Hz`;
