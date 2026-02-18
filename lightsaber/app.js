@@ -219,7 +219,7 @@
 
   function normalizeNoiseEnvelope(p) {
     let a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-    let s = a;
+    let s = clamp(Math.round(p.noiseSms ?? a), a, NOISE_ENV_TOTAL_MS);
     let d = NOISE_ENV_TOTAL_MS;
     p.noiseAms = a;
     p.noiseSms = s;
@@ -228,7 +228,11 @@
 
   function rebalanceNoiseEnvelope(p, changedKey, rawValue) {
     if (changedKey === "noiseAms") {
-      p.noiseAms = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
+      const s = clamp(Math.round(p.noiseSms ?? 0), 0, NOISE_ENV_TOTAL_MS);
+      p.noiseAms = clamp(Math.round(rawValue), 0, s);
+    } else if (changedKey === "noiseSms") {
+      const a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
+      p.noiseSms = clamp(Math.round(rawValue), a, NOISE_ENV_TOTAL_MS);
     }
     normalizeNoiseEnvelope(p);
   }
@@ -1011,6 +1015,9 @@
       }
       if (key === "noiseAms") {
         input.min = 0;
+        input.max = Math.round(p.noiseSms || 0);
+      } else if (key === "noiseSms") {
+        input.min = Math.round(p.noiseAms || 0);
         input.max = NOISE_ENV_TOTAL_MS;
       }
       input.disabled = state.active == null || effectiveMuted(state.active);

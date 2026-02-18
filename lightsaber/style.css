@@ -412,6 +412,7 @@ body{
 }
 
 .envA{ z-index:3; }
+.envS{ z-index:2; }
 
 .envRailLabels{
   position:absolute;
@@ -419,7 +420,7 @@ body{
   right:0;
   bottom:0;
   display:flex;
-  justify-content:flex-start;
+  justify-content:space-between;
   font-size:10px;
   letter-spacing:0.6px;
 }
