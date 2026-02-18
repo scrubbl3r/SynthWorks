@@ -328,6 +328,47 @@ body{
   font-size:80%;
 }
 
+.row.noiseEnvelopeRow{
+  align-items:stretch;
+}
+
+.envEditor{
+  display:grid;
+  grid-template-rows: 1fr auto;
+  gap:8px;
+  min-height:150px;
+  height:150px;
+}
+
+.envViz{
+  width:100%;
+  height:100%;
+  border:var(--stroke) solid #000;
+  background:#0f0c25;
+}
+
+.envViz polyline{
+  fill:none;
+  stroke:var(--ink);
+  stroke-width:3;
+  vector-effect:non-scaling-stroke;
+}
+
+.envSliders{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:8px;
+}
+
+.envSliders label{
+  display:grid;
+  grid-template-columns: 14px 1fr;
+  align-items:center;
+  gap:6px;
+  font-size:10px;
+  letter-spacing:0.6px;
+}
+
 .rowInline{
   display:flex;
   align-items:center;
@@ -338,9 +379,13 @@ body{
 .miniActionBtn{
   min-width:72px;
   height:32px;
-  border:var(--stroke) solid var(--ink);
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) var(--ink);
   background:transparent;
   color:var(--ink);
+  display:flex;
+  align-items:center;
+  justify-content:center;
   text-transform:uppercase;
   letter-spacing:0.7px;
   font-size:11px;
