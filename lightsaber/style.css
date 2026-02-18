@@ -414,6 +414,18 @@ body{
 .envA{ z-index:3; }
 .envS{ z-index:2; }
 .envD{ z-index:1; }
+.envEnd{
+  z-index:0;
+  pointer-events:none;
+}
+
+.envEnd::-webkit-slider-thumb{
+  background:var(--ink);
+}
+
+.envEnd::-moz-range-thumb{
+  background:var(--ink);
+}
 
 .envRailLabels{
   position:absolute;
@@ -436,6 +448,15 @@ body{
 .rowInline select{
   flex:1 1 auto;
   width:auto;
+}
+
+.behaviorInline{
+  justify-content:flex-start;
+}
+
+.behaviorInline select{
+  flex:0 0 170px;
+  max-width:170px;
 }
 
 .miniActionBtn{

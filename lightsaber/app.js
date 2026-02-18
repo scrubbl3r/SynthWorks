@@ -80,6 +80,13 @@
   };
   const NOISE_ENV_TOTAL_MS = 5000;
 
+  function makeNoiseEndpoints(aDur, sDur, dDur) {
+    const a = clamp(Math.round(aDur), 0, NOISE_ENV_TOTAL_MS);
+    const s = clamp(Math.round(a + sDur), a, NOISE_ENV_TOTAL_MS);
+    const d = clamp(Math.round(s + dDur), s, NOISE_ENV_TOTAL_MS);
+    return { a, s, d };
+  }
+
   function skewLow(rngFn, power = 4) {
     return Math.pow(clamp01(rngFn()), power);
   }
@@ -92,54 +99,61 @@
     return v;
   }
 
-  const defaults = () => ({
-    mode: "texture",
-    oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
-    singleOsc: false,
-    unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
-    pwmOn: true,
-    pwm: +RNG.range(0.08, 0.92).toFixed(2),
-    oscRate: +RNG.range(0.7, 1.6).toFixed(2),
-    baseHz: Math.round(RNG.range(70, 190)),
-    detune: Math.round(RNG.range(0, 24)),
-    subMix: +RNG.range(0.12, 0.55).toFixed(2),
-    noiseMix: 0,
-    filterCutoff: Math.round(RNG.range(400, 2800)),
-    filterQ: +RNG.range(0.5, 8.0).toFixed(1),
-    edge: +RNG.range(0.0, 0.7).toFixed(2),
-    drive: +RNG.range(0.1, 0.8).toFixed(2),
-    bassHz: Math.round(RNG.range(40, 120)),
-    bassLP: Math.round(RNG.range(90, 300)),
-    bassRes: +RNG.range(0.4, 3.0).toFixed(1),
-    bassDrive: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoPitch: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoPitchRate: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoLPF: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoLPFRate: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoRes: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoResRate: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoDrive: +RNG.range(0.0, 0.6).toFixed(2),
-    bassLfoDriveRate: +RNG.range(0.0, 0.6).toFixed(2),
-    bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
-    noiseType: RNG.pick(["white", "pink", "bit", "metallic"]),
-    noiseBehavior: RNG.next() < 0.3 ? "oneshot" : "sustain",
-    noiseAms: Math.round(RNG.range(80, 900)),
-    noiseSms: Math.round(RNG.range(300, 1800)),
-    noiseDms: Math.round(RNG.range(400, 2800)),
-    noiseLPF: Math.round(RNG.range(350, 9000)),
-    noiseRes: +RNG.range(0.4, 5.0).toFixed(1),
-    noiseHPF: Math.round(RNG.range(20, 1200)),
-    noiseBPF: Math.round(RNG.range(130, 3200)),
-    noiseBPWidth: +RNG.range(0.2, 0.85).toFixed(2),
-    noiseSweepAmt: +RNG.range(-0.9, 0.9).toFixed(2),
-    noiseSweepTime: +RNG.range(0.03, 0.9).toFixed(2),
-    noiseDrive: +RNG.range(0.0, 0.9).toFixed(2),
-    noiseFlutterAmt: +RNG.range(0.0, 0.45).toFixed(2),
-    noiseFlutterRate: +RNG.range(0.0, 10.0).toFixed(1),
-    stereoWidth: 0.5,
-    spatialize: 0.5,
-    gain: 0.5
-  });
+  const defaults = () => {
+    const ep = makeNoiseEndpoints(
+      RNG.range(80, 900),
+      RNG.range(300, 1800),
+      RNG.range(400, 1800)
+    );
+    return {
+      mode: "texture",
+      oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
+      singleOsc: false,
+      unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
+      pwmOn: true,
+      pwm: +RNG.range(0.08, 0.92).toFixed(2),
+      oscRate: +RNG.range(0.7, 1.6).toFixed(2),
+      baseHz: Math.round(RNG.range(70, 190)),
+      detune: Math.round(RNG.range(0, 24)),
+      subMix: +RNG.range(0.12, 0.55).toFixed(2),
+      noiseMix: 0,
+      filterCutoff: Math.round(RNG.range(400, 2800)),
+      filterQ: +RNG.range(0.5, 8.0).toFixed(1),
+      edge: +RNG.range(0.0, 0.7).toFixed(2),
+      drive: +RNG.range(0.1, 0.8).toFixed(2),
+      bassHz: Math.round(RNG.range(40, 120)),
+      bassLP: Math.round(RNG.range(90, 300)),
+      bassRes: +RNG.range(0.4, 3.0).toFixed(1),
+      bassDrive: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoPitch: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoPitchRate: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoLPF: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoLPFRate: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoRes: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoResRate: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoDrive: +RNG.range(0.0, 0.6).toFixed(2),
+      bassLfoDriveRate: +RNG.range(0.0, 0.6).toFixed(2),
+      bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
+      noiseType: RNG.pick(["white", "pink", "bit", "metallic"]),
+      noiseBehavior: RNG.next() < 0.3 ? "oneshot" : "sustain",
+      noiseAms: ep.a,
+      noiseSms: ep.s,
+      noiseDms: ep.d,
+      noiseLPF: Math.round(RNG.range(350, 9000)),
+      noiseRes: +RNG.range(0.4, 5.0).toFixed(1),
+      noiseHPF: Math.round(RNG.range(20, 1200)),
+      noiseBPF: Math.round(RNG.range(130, 3200)),
+      noiseBPWidth: +RNG.range(0.2, 0.85).toFixed(2),
+      noiseSweepAmt: +RNG.range(-0.9, 0.9).toFixed(2),
+      noiseSweepTime: +RNG.range(0.03, 0.9).toFixed(2),
+      noiseDrive: +RNG.range(0.0, 0.9).toFixed(2),
+      noiseFlutterAmt: +RNG.range(0.0, 0.45).toFixed(2),
+      noiseFlutterRate: +RNG.range(0.0, 10.0).toFixed(1),
+      stereoWidth: 0.5,
+      spatialize: 0.5,
+      gain: 0.5
+    };
+  };
 
   function randomizeVoice(p) {
     const rand = RNG.next.bind(RNG);
@@ -182,9 +196,14 @@
 
     p.noiseType = RNG.pick(["white", "pink", "bit", "metallic"]);
     p.noiseBehavior = RNG.next() < 0.35 ? "oneshot" : "sustain";
-    p.noiseAms = Math.round(RNG.range(40, 1200));
-    p.noiseSms = Math.round(RNG.range(150, 2500));
-    p.noiseDms = Math.round(RNG.range(200, 3000));
+    const ep = makeNoiseEndpoints(
+      RNG.range(40, 1200),
+      RNG.range(150, 2200),
+      RNG.range(200, 2200)
+    );
+    p.noiseAms = ep.a;
+    p.noiseSms = ep.s;
+    p.noiseDms = ep.d;
     p.noiseLPF = Math.round(RNG.range(200, 12000));
     p.noiseRes = +RNG.range(0.2, 8.5).toFixed(1);
     p.noiseHPF = Math.round(RNG.range(20, 2500));
@@ -198,97 +217,49 @@
     normalizeNoiseEnvelope(p);
   }
 
-  function normalizeNoiseEnvelope(p, changedKey = null) {
-    let a = Math.max(0, Math.round(p.noiseAms ?? 0));
-    let s = Math.max(0, Math.round(p.noiseSms ?? 0));
-    let d = Math.max(0, Math.round(p.noiseDms ?? 0));
-
-    if (changedKey === "noiseAms") {
-      a = clamp(a, 0, NOISE_ENV_TOTAL_MS - s - d);
-    } else if (changedKey === "noiseSms") {
-      s = clamp(s, 0, NOISE_ENV_TOTAL_MS - a - d);
-    } else if (changedKey === "noiseDms") {
-      d = clamp(d, 0, NOISE_ENV_TOTAL_MS - a - s);
-    }
-
-    const total = a + s + d;
-    if (total !== NOISE_ENV_TOTAL_MS) {
-      if (changedKey === "noiseAms") {
-        a = clamp(a + (NOISE_ENV_TOTAL_MS - total), 0, NOISE_ENV_TOTAL_MS);
-      } else if (changedKey === "noiseSms") {
-        s = clamp(s + (NOISE_ENV_TOTAL_MS - total), 0, NOISE_ENV_TOTAL_MS);
-      } else if (changedKey === "noiseDms") {
-        d = clamp(d + (NOISE_ENV_TOTAL_MS - total), 0, NOISE_ENV_TOTAL_MS);
-      } else {
-        const scale = total > 0 ? NOISE_ENV_TOTAL_MS / total : 1;
-        a = Math.round(a * scale);
-        s = Math.round(s * scale);
-        d = NOISE_ENV_TOTAL_MS - a - s;
-      }
-    }
-
-    if (a + s + d !== NOISE_ENV_TOTAL_MS) {
-      d = Math.max(0, NOISE_ENV_TOTAL_MS - a - s);
-    }
-
+  function normalizeNoiseEnvelope(p) {
+    let a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
+    let s = clamp(Math.round(p.noiseSms ?? a), a, NOISE_ENV_TOTAL_MS);
+    let d = clamp(Math.round(p.noiseDms ?? s), s, NOISE_ENV_TOTAL_MS);
+    if (s < a) s = a;
+    if (d < s) d = s;
     p.noiseAms = a;
     p.noiseSms = s;
     p.noiseDms = d;
   }
 
   function rebalanceNoiseEnvelope(p, changedKey, rawValue) {
-    const keys = ["noiseAms", "noiseSms", "noiseDms"];
-    if (!keys.includes(changedKey)) return;
-    const next = {
-      noiseAms: Math.max(0, Math.round(p.noiseAms || 0)),
-      noiseSms: Math.max(0, Math.round(p.noiseSms || 0)),
-      noiseDms: Math.max(0, Math.round(p.noiseDms || 0))
-    };
-    const order = {
-      noiseAms: ["noiseSms", "noiseDms"],
-      noiseSms: ["noiseDms", "noiseAms"],
-      noiseDms: ["noiseSms", "noiseAms"]
-    };
+    let a = clamp(Math.round(p.noiseAms || 0), 0, NOISE_ENV_TOTAL_MS);
+    let s = clamp(Math.round(p.noiseSms || a), 0, NOISE_ENV_TOTAL_MS);
+    let d = clamp(Math.round(p.noiseDms || s), 0, NOISE_ENV_TOTAL_MS);
+    const v = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
 
-    let value = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
-    const old = next[changedKey];
-    const delta = value - old;
-    next[changedKey] = value;
-
-    if (delta > 0) {
-      let need = delta;
-      for (const k of order[changedKey]) {
-        if (need <= 0) break;
-        const take = Math.min(next[k], need);
-        next[k] -= take;
-        need -= take;
-      }
-      if (need > 0) {
-        next[changedKey] = Math.max(0, next[changedKey] - need);
-      }
-    } else if (delta < 0) {
-      let free = -delta;
-      for (const k of order[changedKey]) {
-        if (free <= 0) break;
-        const room = NOISE_ENV_TOTAL_MS - next[k];
-        const add = Math.min(room, free);
-        next[k] += add;
-        free -= add;
-      }
+    if (changedKey === "noiseAms") {
+      a = v;
+      if (a > s) s = a;
+      if (s > d) d = s;
+    } else if (changedKey === "noiseSms") {
+      s = v;
+      if (s < a) a = s;
+      if (s > d) d = s;
+    } else if (changedKey === "noiseDms") {
+      d = v;
+      if (d < s) s = d;
+      if (s < a) a = s;
     }
 
-    p.noiseAms = next.noiseAms;
-    p.noiseSms = next.noiseSms;
-    p.noiseDms = next.noiseDms;
+    p.noiseAms = a;
+    p.noiseSms = s;
+    p.noiseDms = d;
     normalizeNoiseEnvelope(p);
   }
 
   function updateNoiseEnvelopeViz(p) {
     if (!noiseEnvLine || !p) return;
-    const total = Math.max(1, p.noiseAms + p.noiseSms + p.noiseDms);
-    const ax = (p.noiseAms / total) * 100;
-    const sx = ((p.noiseAms + p.noiseSms) / total) * 100;
-    noiseEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 100,98`);
+    const ax = (clamp(p.noiseAms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
+    const sx = (clamp(p.noiseSms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
+    const dx = (clamp(p.noiseDms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
+    noiseEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 ${dx.toFixed(2)},98`);
   }
 
   const state = {
@@ -547,9 +518,12 @@
     }
 
     function triggerNoiseOneShot(p, t, level) {
-      const a = clamp((p.noiseAms || 0) / 1000, 0, 5);
-      const s = clamp((p.noiseSms || 0) / 1000, 0, 5);
-      const d = clamp((p.noiseDms || 0) / 1000, 0, 5);
+      const aMs = clamp(p.noiseAms || 0, 0, NOISE_ENV_TOTAL_MS);
+      const sMs = clamp((p.noiseSms || 0) - aMs, 0, NOISE_ENV_TOTAL_MS);
+      const dMs = clamp((p.noiseDms || 0) - (p.noiseSms || 0), 0, NOISE_ENV_TOTAL_MS);
+      const a = aMs / 1000;
+      const s = sMs / 1000;
+      const d = dMs / 1000;
       const peak = level;
 
       noiseModeGain.gain.cancelScheduledValues(t);
@@ -682,7 +656,7 @@
             noiseModeGain.gain.setTargetAtTime(0, t, 0.02);
           } else if (forceNoiseTrigger || t >= oneShotCooldownUntil) {
             triggerNoiseOneShot(p, t, noiseGainValue);
-            oneShotCooldownUntil = t + ((p.noiseAms + p.noiseSms + p.noiseDms) / 1000) * 0.8 + 0.04;
+            oneShotCooldownUntil = t + ((p.noiseDms || 0) / 1000) * 0.8 + 0.04;
           }
         } else {
           oneShotCooldownUntil = 0;
@@ -1061,7 +1035,7 @@
       if (out) out.textContent = formatValue(key, p[key]);
     });
     const envOut = controls.querySelector("[data-out='noiseEnvelope']");
-    if (envOut && p) envOut.textContent = `${NOISE_ENV_TOTAL_MS} ms`;
+    if (envOut && p) envOut.textContent = `${Math.round(p.noiseDms || 0)} ms`;
     updateNoiseEnvelopeViz(p);
     if (noisePlayBtn) {
       const showPlay = hasActive && p && p.mode === "noise" && p.noiseBehavior === "oneshot";
@@ -1078,7 +1052,7 @@
     if (key === "noiseAms") return `${Math.round(value)} ms`;
     if (key === "noiseSms") return `${Math.round(value)} ms`;
     if (key === "noiseDms") return `${Math.round(value)} ms`;
-    if (key === "noiseEnvelope") return `${NOISE_ENV_TOTAL_MS} ms`;
+    if (key === "noiseEnvelope") return `${Math.round(value || 0)} ms`;
     if (key === "noiseLPF") return `${Math.round(value)} Hz`;
     if (key === "noiseHPF") return `${Math.round(value)} Hz`;
     if (key === "noiseRes") return value.toFixed(1);
@@ -1142,14 +1116,8 @@
         if (aIn) aIn.value = p.noiseAms;
         if (sIn) sIn.value = p.noiseSms;
         if (dIn) dIn.value = p.noiseDms;
-        const aOut = controls.querySelector("[data-out='noiseAms']");
-        const sOut = controls.querySelector("[data-out='noiseSms']");
-        const dOut = controls.querySelector("[data-out='noiseDms']");
-        if (aOut) aOut.textContent = formatValue("noiseAms", p.noiseAms);
-        if (sOut) sOut.textContent = formatValue("noiseSms", p.noiseSms);
-        if (dOut) dOut.textContent = formatValue("noiseDms", p.noiseDms);
         const envOut = controls.querySelector("[data-out='noiseEnvelope']");
-        if (envOut) envOut.textContent = `${NOISE_ENV_TOTAL_MS} ms`;
+        if (envOut) envOut.textContent = `${Math.round(p.noiseDms || 0)} ms`;
         updateNoiseEnvelopeViz(p);
       }
 
@@ -1157,7 +1125,10 @@
       if (out) out.textContent = formatValue(key, p[key]);
 
       applyVoice(state.active);
-      if (key === "mode" || key === "noiseBehavior") applyModeVisibility(p.mode);
+      if (key === "mode" || key === "noiseBehavior") {
+        applyModeVisibility(p.mode);
+        syncControls();
+      }
     };
 
     controls.addEventListener("input", onControlChange);

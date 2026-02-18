@@ -53,7 +53,7 @@
 
         <label class="row" data-mode="noise">
           <span>Behavior</span>
-          <div class="rowInline">
+          <div class="rowInline behaviorInline">
             <select data-param="noiseBehavior">
               <option value="sustain">Sustain</option>
               <option value="oneshot">One-shot</option>
@@ -73,6 +73,7 @@
               <input class="envHandle envA" type="range" min="0" max="5000" step="10" data-param="noiseAms" />
               <input class="envHandle envS" type="range" min="0" max="5000" step="10" data-param="noiseSms" />
               <input class="envHandle envD" type="range" min="0" max="5000" step="10" data-param="noiseDms" />
+              <input class="envHandle envEnd" type="range" min="5000" max="5000" step="10" value="5000" disabled />
               <div class="envRailLabels"><span>A</span><span>S</span><span>D</span></div>
             </div>
           </div>
