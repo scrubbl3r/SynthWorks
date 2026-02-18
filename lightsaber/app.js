@@ -219,29 +219,35 @@
 
   function normalizeNoiseEnvelope(p) {
     let a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-    let s = clamp(Math.round(p.noiseSms ?? a), a, NOISE_ENV_TOTAL_MS);
-    let d = NOISE_ENV_TOTAL_MS;
+    let s = clamp(Math.round(p.noiseSms ?? 0), 0, NOISE_ENV_TOTAL_MS);
+    let d = clamp(Math.round(p.noiseDms ?? NOISE_ENV_TOTAL_MS), 0, NOISE_ENV_TOTAL_MS);
     p.noiseAms = a;
     p.noiseSms = s;
     p.noiseDms = d;
   }
 
   function rebalanceNoiseEnvelope(p, changedKey, rawValue) {
-    if (changedKey === "noiseAms") {
-      const s = clamp(Math.round(p.noiseSms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-      p.noiseAms = clamp(Math.round(rawValue), 0, s);
-    } else if (changedKey === "noiseSms") {
-      const a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-      p.noiseSms = clamp(Math.round(rawValue), a, NOISE_ENV_TOTAL_MS);
+    if (changedKey === "noiseAms" || changedKey === "noiseSms" || changedKey === "noiseDms") {
+      p[changedKey] = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
     }
     normalizeNoiseEnvelope(p);
   }
 
+  function effectiveNoiseEndpoints(p) {
+    const a = clamp(Math.round(p.noiseAms || 0), 0, NOISE_ENV_TOTAL_MS);
+    const sRaw = clamp(Math.round(p.noiseSms || 0), 0, NOISE_ENV_TOTAL_MS);
+    const dRaw = clamp(Math.round(p.noiseDms || 0), 0, NOISE_ENV_TOTAL_MS);
+    const s = Math.max(a, sRaw);
+    const d = Math.max(s, dRaw);
+    return { a, s, d };
+  }
+
   function updateNoiseEnvelopeViz(p) {
     if (!noiseEnvLine || !p) return;
-    const ax = (clamp(p.noiseAms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
-    const sx = (clamp(p.noiseSms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
-    const dx = (clamp(p.noiseDms, 0, NOISE_ENV_TOTAL_MS) / NOISE_ENV_TOTAL_MS) * 100;
+    const ep = effectiveNoiseEndpoints(p);
+    const ax = (ep.a / NOISE_ENV_TOTAL_MS) * 100;
+    const sx = (ep.s / NOISE_ENV_TOTAL_MS) * 100;
+    const dx = (ep.d / NOISE_ENV_TOTAL_MS) * 100;
     noiseEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 ${dx.toFixed(2)},98`);
   }
 
@@ -501,9 +507,10 @@
     }
 
     function triggerNoiseOneShot(p, t, level) {
-      const aMs = clamp(p.noiseAms || 0, 0, NOISE_ENV_TOTAL_MS);
-      const sMs = clamp((p.noiseSms || 0) - aMs, 0, NOISE_ENV_TOTAL_MS);
-      const dMs = clamp((p.noiseDms || 0) - (p.noiseSms || 0), 0, NOISE_ENV_TOTAL_MS);
+      const ep = effectiveNoiseEndpoints(p);
+      const aMs = ep.a;
+      const sMs = clamp(ep.s - ep.a, 0, NOISE_ENV_TOTAL_MS);
+      const dMs = clamp(ep.d - ep.s, 0, NOISE_ENV_TOTAL_MS);
       const a = aMs / 1000;
       const s = sMs / 1000;
       const d = dMs / 1000;
@@ -639,7 +646,8 @@
             noiseModeGain.gain.setTargetAtTime(0, t, 0.02);
           } else if (forceNoiseTrigger || t >= oneShotCooldownUntil) {
             triggerNoiseOneShot(p, t, noiseGainValue);
-            oneShotCooldownUntil = t + ((p.noiseDms || 0) / 1000) * 0.8 + 0.04;
+            const ep = effectiveNoiseEndpoints(p);
+            oneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
           }
         } else {
           oneShotCooldownUntil = 0;
@@ -1013,11 +1021,8 @@
       } else {
         input.value = p[key];
       }
-      if (key === "noiseAms") {
+      if (key === "noiseAms" || key === "noiseSms" || key === "noiseDms") {
         input.min = 0;
-        input.max = Math.round(p.noiseSms || 0);
-      } else if (key === "noiseSms") {
-        input.min = Math.round(p.noiseAms || 0);
         input.max = NOISE_ENV_TOTAL_MS;
       }
       input.disabled = state.active == null || effectiveMuted(state.active);
@@ -1025,7 +1030,10 @@
       if (out) out.textContent = formatValue(key, p[key]);
     });
     const envOut = controls.querySelector("[data-out='noiseEnvelope']");
-    if (envOut && p) envOut.textContent = `${Math.round(p.noiseDms || 0)} ms`;
+    if (envOut && p) {
+      const ep = effectiveNoiseEndpoints(p);
+      envOut.textContent = `${Math.round(ep.d)} ms`;
+    }
     updateNoiseEnvelopeViz(p);
     if (noisePlayBtn) {
       const showPlay = hasActive && p && p.mode === "noise" && p.noiseBehavior === "oneshot";
@@ -1107,7 +1115,10 @@
         if (sIn) sIn.value = p.noiseSms;
         if (dIn) dIn.value = p.noiseDms;
         const envOut = controls.querySelector("[data-out='noiseEnvelope']");
-        if (envOut) envOut.textContent = `${Math.round(p.noiseDms || 0)} ms`;
+        if (envOut) {
+          const ep = effectiveNoiseEndpoints(p);
+          envOut.textContent = `${Math.round(ep.d)} ms`;
+        }
         updateNoiseEnvelopeViz(p);
       }
 

@@ -69,10 +69,10 @@
             <svg class="envViz" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <polyline id="noiseEnvLine" points="0,98 15,12 55,12 100,98"></polyline>
             </svg>
-            <div class="envRail">
-              <input class="envHandle envA" type="range" min="0" max="5000" step="10" data-param="noiseAms" />
-              <input class="envHandle envS" type="range" min="0" max="5000" step="10" data-param="noiseSms" />
-              <div class="envRailLabels"><span>A</span><span>S</span></div>
+            <div class="envStack">
+              <label><span>A End</span><input type="range" min="0" max="5000" step="10" data-param="noiseAms" /></label>
+              <label><span>S End</span><input type="range" min="0" max="5000" step="10" data-param="noiseSms" /></label>
+              <label><span>D End</span><input type="range" min="0" max="5000" step="10" data-param="noiseDms" /></label>
             </div>
           </div>
           <output data-out="noiseEnvelope">5000 ms</output>

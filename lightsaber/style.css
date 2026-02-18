@@ -354,75 +354,22 @@ body{
   vector-effect:non-scaling-stroke;
 }
 
-.envRail{
-  position:relative;
-  height:32px;
+.envStack{
+  display:grid;
+  gap:4px;
 }
 
-.envRail::before{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  top:12px;
-  height:2px;
-  background:var(--ink);
-  opacity:0.85;
-}
-
-.envHandle{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:24px;
-  margin:0;
-  background:transparent;
-  -webkit-appearance:none;
-  appearance:none;
-}
-
-.envHandle::-webkit-slider-runnable-track{
-  height:2px;
-  background:transparent;
-}
-
-.envHandle::-webkit-slider-thumb{
-  -webkit-appearance:none;
-  appearance:none;
-  width:12px;
-  height:12px;
-  margin-top:-5px;
-  border-radius:50%;
-  border:2px solid #000;
-  background:var(--accent);
-}
-
-.envHandle::-moz-range-track{
-  height:2px;
-  background:transparent;
-  border:0;
-}
-
-.envHandle::-moz-range-thumb{
-  width:12px;
-  height:12px;
-  border-radius:50%;
-  border:2px solid #000;
-  background:var(--accent);
-}
-
-.envA{ z-index:3; }
-.envS{ z-index:2; }
-
-.envRailLabels{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  display:flex;
-  justify-content:space-between;
+.envStack label{
+  display:grid;
+  grid-template-columns:44px 1fr;
+  align-items:center;
+  gap:8px;
   font-size:10px;
   letter-spacing:0.6px;
+}
+
+.envStack input[type="range"]{
+  width:100%;
 }
 
 .rowInline{
