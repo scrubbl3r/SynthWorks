@@ -1310,12 +1310,12 @@
         state.playing = false;
         state.master.gain.setTargetAtTime(0, state.ctx.currentTime, 0.02);
         await state.ctx.suspend();
-        playBtn.textContent = "Play";
+        playBtn.textContent = "Unmute";
       } else {
         await state.ctx.resume();
         state.playing = true;
         state.master.gain.setTargetAtTime(0.85, state.ctx.currentTime, 0.02);
-        playBtn.textContent = "Pause";
+        playBtn.textContent = "Mute";
         if (startOverlay) startOverlay.style.display = "none";
       }
     });

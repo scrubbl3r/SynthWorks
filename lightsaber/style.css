@@ -319,6 +319,20 @@ body{
   gap:8px;
 }
 
+.randomizeRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.randomizeAction{
+  min-width:150px;
+  height:40px;
+  flex:0 0 auto;
+  border-left:var(--stroke) solid #000;
+}
+
 .controls{
   display:grid;
   gap:10px;
