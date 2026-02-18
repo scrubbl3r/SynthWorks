@@ -304,8 +304,10 @@ body{
 }
 
 .randomizeModes{
-  display:grid;
-  gap:8px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
   font-size:12px;
   text-transform:uppercase;
   letter-spacing:0.7px;
