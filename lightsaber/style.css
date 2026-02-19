@@ -77,7 +77,8 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:0;
-  border:var(--stroke) solid #000;
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) #000;
   padding:0;
   background:var(--panel);
   color:var(--ink);
@@ -142,7 +143,8 @@ body{
 }
 
 .voiceStrip{
-  border:var(--stroke) solid #000;
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) #000;
   background:#0b0820;
   margin-bottom:var(--card-gap);
 }
@@ -293,7 +295,8 @@ body{
 }
 
 .panel{
-  border:var(--stroke) solid #000;
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) #000;
   background:var(--panel);
   color:var(--panel-ink);
   padding:0;
@@ -410,7 +413,8 @@ body{
 .envViz{
   width:100%;
   height:100px;
-  border:var(--stroke) solid #000;
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) #000;
   background:#0f0c25;
 }
 
@@ -535,7 +539,8 @@ select{
   height:30px;
   background:#0b0820;
   color:var(--ink);
-  border:var(--stroke) solid #000;
+  border:0;
+  box-shadow: inset 0 0 0 var(--stroke) #000;
   text-transform:uppercase;
   letter-spacing:0.6px;
 }
