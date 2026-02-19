@@ -8,6 +8,8 @@
   --accent-ink:#140100;
   --muted:rgba(255,59,24,0.65);
   --action-size:160px;
+  --card-gap:12px;
+  --card-inset:12px;
 }
 
 *{ box-sizing:border-box; }
@@ -79,7 +81,7 @@ body{
   padding:0;
   background:var(--panel);
   color:var(--ink);
-  margin-bottom:12px;
+  margin-bottom:var(--card-gap);
 }
 
 .zoneTitle{
@@ -89,7 +91,7 @@ body{
   text-transform:uppercase;
   letter-spacing:1px;
   line-height:1;
-  padding-left:12px;
+  padding-left:var(--card-inset);
 }
 
 .topActions{
@@ -130,7 +132,7 @@ body{
 .voiceStrip{
   border:var(--stroke) solid #000;
   background:#0b0820;
-  margin-bottom:12px;
+  margin-bottom:var(--card-gap);
 }
 
 .voiceGrid{
@@ -282,8 +284,8 @@ body{
   border:var(--stroke) solid #000;
   background:var(--panel);
   color:var(--panel-ink);
-  padding:12px;
-  margin-bottom:12px;
+  padding:0;
+  margin-bottom:var(--card-gap);
 }
 
 .panelHeader{
@@ -292,6 +294,7 @@ body{
   justify-content:space-between;
   gap:10px;
   margin-bottom:12px;
+  padding:var(--card-inset) var(--card-inset) 0 var(--card-inset);
 }
 
 .panelTitle{
@@ -329,6 +332,7 @@ body{
   align-items:stretch;
   gap:12px;
   min-height:var(--action-size);
+  padding:var(--card-inset);
 }
 
 .randomizeLeft{
@@ -358,6 +362,7 @@ body{
 .controls{
   display:grid;
   gap:10px;
+  padding:0 var(--card-inset) var(--card-inset) var(--card-inset);
 }
 
 .row{
