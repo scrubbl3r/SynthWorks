@@ -1,6 +1,7 @@
 (() => {
   const regenBtn = document.getElementById("regenBtn");
   const playBtn = document.getElementById("playBtn");
+  const replayBtn = document.getElementById("replayBtn");
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
@@ -592,6 +593,7 @@
 
     function apply(p, muted, width, basePan, opts = {}) {
       const forceNoiseTrigger = !!opts.forceNoiseTrigger;
+      const forceReplay = !!opts.forceReplay;
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
@@ -633,6 +635,10 @@
       edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
 
       drive.setAmount(p.drive);
+      if (forceReplay && !muted) {
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setValueAtTime(0, t);
+      }
       gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
@@ -641,6 +647,10 @@
 
       if (isBass) {
         const bassTarget = muted ? 0 : bassGainValue;
+        if (forceReplay && !muted) {
+          bassGain.gain.cancelScheduledValues(t);
+          bassGain.gain.setValueAtTime(0, t);
+        }
         bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
 
         bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
@@ -673,6 +683,18 @@
       }
 
       if (isNoise) {
+        if (forceReplay) {
+          noiseGateOn = false;
+          oneShotCooldownUntil = 0;
+          noiseModeGain.gain.cancelScheduledValues(t);
+          noiseBoomGain.gain.cancelScheduledValues(t);
+          noiseRingGain.gain.cancelScheduledValues(t);
+          noiseCrackleGain.gain.cancelScheduledValues(t);
+          noiseModeGain.gain.setValueAtTime(0, t);
+          noiseBoomGain.gain.setValueAtTime(0, t);
+          noiseRingGain.gain.setValueAtTime(0, t);
+          noiseCrackleGain.gain.setValueAtTime(0, t);
+        }
         const profile = noiseTypeProfile(p.noiseType);
         noiseModeHP.frequency.setTargetAtTime(clamp(p.noiseHPF * profile.hpMul, 20, 4000), t, 0.03);
         noiseModeLP.frequency.setTargetAtTime(clamp(p.noiseLPStart * profile.lpMul, 100, 12000), t, 0.03);
@@ -1285,6 +1307,15 @@
     syncControls();
   }
 
+  async function replayAllVoices() {
+    await startAudio();
+    if (!state.ctx) return;
+    for (let i = 0; i < state.voices.length; i++) {
+      if (!state.activeTracks[i]) continue;
+      applyVoice(i, { forceNoiseTrigger: true, forceReplay: true });
+    }
+  }
+
   function init() {
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
@@ -1302,6 +1333,7 @@
   }
 
   regenBtn.addEventListener("click", regenerate);
+  if (replayBtn) replayBtn.addEventListener("click", replayAllVoices);
   if (playBtn) {
     playBtn.addEventListener("click", async () => {
       await startAudio();
