@@ -321,14 +321,17 @@ body{
 
 .randomizeRow{
   display:flex;
-  align-items:center;
+  align-items:stretch;
   justify-content:space-between;
   gap:12px;
+  min-height:160px;
 }
 
 .randomizeAction{
-  min-width:150px;
-  height:40px;
+  height:auto;
+  align-self:stretch;
+  aspect-ratio:1 / 1;
+  min-width:160px;
   flex:0 0 auto;
   border-left:var(--stroke) solid #000;
 }
