@@ -330,9 +330,8 @@ body{
   display:grid;
   grid-template-columns: 3fr 2fr;
   align-items:stretch;
-  gap:12px;
+  gap:0;
   min-height:var(--action-size);
-  padding:var(--card-inset);
 }
 
 .randomizeLeft{
@@ -341,6 +340,7 @@ body{
   align-items:flex-start;
   justify-content:flex-start;
   gap:10px;
+  padding:var(--card-inset);
 }
 
 .randomizeRight{
@@ -351,7 +351,7 @@ body{
 
 .randomizeAction{
   width:var(--action-size);
-  height:var(--action-size);
+  height:100%;
   min-width:0;
   max-width:100%;
   flex:0 0 auto;
