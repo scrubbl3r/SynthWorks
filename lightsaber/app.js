@@ -2,7 +2,6 @@
   const regenBtn = document.getElementById("regenBtn");
   const playBtn = document.getElementById("playBtn");
   const playBtn2 = document.getElementById("playBtn2");
-  const replayBtn = document.getElementById("replayBtn");
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
@@ -1334,7 +1333,6 @@
   }
 
   regenBtn.addEventListener("click", regenerate);
-  if (replayBtn) replayBtn.addEventListener("click", replayAllVoices);
   const syncMuteButtons = (label) => {
     if (playBtn) playBtn.textContent = label;
   };
@@ -1356,12 +1354,7 @@
       }
   };
   if (playBtn) playBtn.addEventListener("click", onToggleMute);
-  if (playBtn2) {
-    playBtn2.addEventListener("click", () => {
-      if (replayBtn) replayBtn.click();
-      else replayAllVoices();
-    });
-  }
+  if (playBtn2) playBtn2.addEventListener("click", replayAllVoices);
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
     startBtn.addEventListener("click", startAudio);
