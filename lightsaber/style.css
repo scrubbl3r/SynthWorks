@@ -7,6 +7,7 @@
   --accent:#ff3b18;
   --accent-ink:#140100;
   --muted:rgba(255,59,24,0.65);
+  --action-size:160px;
 }
 
 *{ box-sizing:border-box; }
@@ -100,7 +101,7 @@ body{
 }
 
 .regen{
-  min-width:150px;
+  min-width:var(--action-size);
   height:56px;
   display:flex;
   align-items:center;
@@ -324,7 +325,7 @@ body{
   grid-template-columns: 3fr 2fr;
   align-items:stretch;
   gap:12px;
-  min-height:160px;
+  min-height:var(--action-size);
 }
 
 .randomizeLeft{
@@ -342,9 +343,8 @@ body{
 }
 
 .randomizeAction{
-  height:100%;
-  width:auto;
-  aspect-ratio:1 / 1;
+  width:var(--action-size);
+  height:var(--action-size);
   min-width:0;
   max-width:100%;
   flex:0 0 auto;
