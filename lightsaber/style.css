@@ -391,7 +391,11 @@ body{
   height:100%;
   flex:0 0 auto;
   border-left:0;
-  box-shadow: inset 0 0 0 var(--stroke) #000;
+  box-shadow:none;
+}
+
+.randomizeAction::after{
+  display:none;
 }
 
 .controls{
