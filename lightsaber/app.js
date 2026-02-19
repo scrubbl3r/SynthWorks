@@ -1,6 +1,7 @@
 (() => {
   const regenBtn = document.getElementById("regenBtn");
   const playBtn = document.getElementById("playBtn");
+  const playBtn2 = document.getElementById("playBtn2");
   const replayBtn = document.getElementById("replayBtn");
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
@@ -1334,24 +1335,28 @@
 
   regenBtn.addEventListener("click", regenerate);
   if (replayBtn) replayBtn.addEventListener("click", replayAllVoices);
-  if (playBtn) {
-    playBtn.addEventListener("click", async () => {
+  const syncMuteButtons = (label) => {
+    if (playBtn) playBtn.textContent = label;
+  };
+
+  const onToggleMute = async () => {
       await startAudio();
       if (!state.ctx) return;
       if (state.ctx.state === "running") {
         state.playing = false;
         state.master.gain.setTargetAtTime(0, state.ctx.currentTime, 0.02);
         await state.ctx.suspend();
-        playBtn.textContent = "Unmute";
+        syncMuteButtons("Unmute");
       } else {
         await state.ctx.resume();
         state.playing = true;
         state.master.gain.setTargetAtTime(0.85, state.ctx.currentTime, 0.02);
-        playBtn.textContent = "Mute";
+        syncMuteButtons("Mute");
         if (startOverlay) startOverlay.style.display = "none";
       }
-    });
-  }
+  };
+  if (playBtn) playBtn.addEventListener("click", onToggleMute);
+  if (playBtn2) playBtn2.addEventListener("click", replayAllVoices);
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
     startBtn.addEventListener("click", startAudio);
