@@ -150,8 +150,8 @@ body{
 }
 
 .regen.ghost.replayFill{
-  background:var(--accent);
-  color:var(--panel);
+  background:var(--pannel);
+  color:var(--ink);
 }
 
 .regen.replaySolid::after{
