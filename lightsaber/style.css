@@ -142,6 +142,10 @@ body{
   border-color:var(--ink);
 }
 
+.regen.replaySolid::after{
+  display:none;
+}
+
 .voiceStrip{
   border:0;
   box-shadow: inset 0 0 0 var(--stroke) #000;
