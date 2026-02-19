@@ -150,7 +150,8 @@ body{
 }
 
 .regen.replaySolid::after{
-  display:none;
+  display:block;
+  border-color:transparent;
 }
 
 .regen.replaySolid{
