@@ -149,17 +149,9 @@ body{
   border-color:var(--ink);
 }
 
-.regen#playBtn2{
-  width:var(--action-size);
-  min-width:var(--action-size);
-  max-width:var(--action-size);
-  height:var(--top-action-h);
+.regen.ghost.replayFill{
   background:var(--accent);
   color:var(--panel);
-}
-
-.regen#playBtn2::after{
-  display:none;
 }
 
 .regen.replaySolid::after{
