@@ -126,7 +126,7 @@ body{
 .regen::after{
   content:"";
   position:absolute;
-  inset:0;
+  inset:var(--stroke);
   border:var(--stroke) solid #000;
   pointer-events:none;
 }
