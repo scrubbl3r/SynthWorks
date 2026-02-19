@@ -305,8 +305,8 @@ body{
 
 .randomizeModes{
   display:flex;
-  align-items:center;
-  gap:14px;
+  align-items:flex-start;
+  gap:10px;
   flex-wrap:wrap;
   font-size:12px;
   text-transform:uppercase;
@@ -320,18 +320,33 @@ body{
 }
 
 .randomizeRow{
-  display:flex;
+  display:grid;
+  grid-template-columns: 3fr 2fr;
   align-items:stretch;
-  justify-content:space-between;
   gap:12px;
   min-height:160px;
 }
 
+.randomizeLeft{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-start;
+  gap:10px;
+}
+
+.randomizeRight{
+  display:flex;
+  align-items:stretch;
+  justify-content:flex-end;
+}
+
 .randomizeAction{
-  height:auto;
-  align-self:stretch;
+  height:100%;
+  width:auto;
   aspect-ratio:1 / 1;
-  min-width:160px;
+  min-width:0;
+  max-width:100%;
   flex:0 0 auto;
   border-left:var(--stroke) solid #000;
 }

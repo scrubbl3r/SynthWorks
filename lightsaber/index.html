@@ -24,16 +24,18 @@
     </section>
 
     <section class="panel" aria-label="Randomize controls">
-      <div class="panelHeader">
-        <div class="panelTitle">RAMDOMIZE CONTROLS</div>
-      </div>
       <div class="randomizeRow">
-        <div class="randomizeModes" id="randomizeModes">
-          <label><input type="checkbox" data-randomize-mode="texture" checked /> Texture</label>
-          <label><input type="checkbox" data-randomize-mode="bass" checked /> Bass</label>
-          <label><input type="checkbox" data-randomize-mode="noise" checked /> Noise</label>
+        <div class="randomizeLeft">
+          <div class="panelTitle">RAMDOMIZE CONTROLS</div>
+          <div class="randomizeModes" id="randomizeModes">
+            <label><input type="checkbox" data-randomize-mode="texture" checked /> Texture</label>
+            <label><input type="checkbox" data-randomize-mode="bass" checked /> Bass</label>
+            <label><input type="checkbox" data-randomize-mode="noise" checked /> Noise</label>
+          </div>
         </div>
-        <button id="regenBtn" class="regen randomizeAction" type="button">Randomize</button>
+        <div class="randomizeRight">
+          <button id="regenBtn" class="regen randomizeAction" type="button">Randomize</button>
+        </div>
       </div>
     </section>
 
