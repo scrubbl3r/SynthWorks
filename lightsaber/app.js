@@ -1356,7 +1356,12 @@
       }
   };
   if (playBtn) playBtn.addEventListener("click", onToggleMute);
-  if (playBtn2) playBtn2.addEventListener("click", replayAllVoices);
+  if (playBtn2) {
+    playBtn2.addEventListener("click", () => {
+      if (replayBtn) replayBtn.click();
+      else replayAllVoices();
+    });
+  }
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
     startBtn.addEventListener("click", startAudio);
