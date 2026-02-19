@@ -74,9 +74,9 @@ body{
 .startBtn:active{ transform:none; }
 
 .topbar{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  display:grid;
+  grid-template-columns: 3fr 2fr;
+  align-items:stretch;
   gap:0;
   border:0;
   box-shadow: inset 0 0 0 var(--stroke) #000;
@@ -93,6 +93,9 @@ body{
   text-transform:uppercase;
   letter-spacing:1px;
   line-height:1;
+  display:flex;
+  align-items:center;
+  min-height:var(--top-action-h);
   padding-left:var(--card-inset);
 }
 
@@ -100,7 +103,7 @@ body{
   display:flex;
   align-items:stretch;
   justify-content:flex-end;
-  width:auto;
+  width:100%;
   gap:0;
 }
 
