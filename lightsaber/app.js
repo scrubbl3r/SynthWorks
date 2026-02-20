@@ -1570,7 +1570,9 @@
     const rows = controls.querySelectorAll("[data-mode]");
     rows.forEach((row) => {
       const m = row.dataset.mode;
-      const show = m === "all" || m === mode;
+      const showByMode = m === "all" || m === mode;
+      const hideInNoise = row.dataset.hideNoise === "1" && mode === "noise";
+      const show = showByMode && !hideInNoise;
       row.style.display = show ? "" : "none";
     });
     const p = state.voiceParams[state.active] || {};

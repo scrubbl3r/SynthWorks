@@ -56,6 +56,23 @@
           </select>
         </label>
 
+        <label class="row" data-mode="all" data-hide-noise="1">
+          <span>Oscillator</span>
+          <div class="rowInline">
+            <select data-param="oscType">
+              <option value="sawtooth">Saw</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+              <option value="sine">Sine</option>
+            </select>
+            <label class="inlineToggle">
+              <input type="checkbox" data-param="singleOsc" />
+              <span>Single</span>
+            </label>
+          </div>
+          <output data-out="singleOsc"></output>
+        </label>
+
         <label class="row" data-mode="texture">
           <span>Behavior</span>
           <div class="rowInline behaviorInline">
@@ -236,23 +253,6 @@
           <span>Edge Drive</span>
           <input type="range" min="0" max="1" step="0.01" data-param="noiseEdgeDrive" />
           <output data-out="noiseEdgeDrive"></output>
-        </label>
-
-        <label class="row" data-mode="texture">
-          <span>Oscillator</span>
-          <div class="rowInline">
-            <select data-param="oscType">
-              <option value="sawtooth">Saw</option>
-              <option value="square">Square</option>
-              <option value="triangle">Triangle</option>
-              <option value="sine">Sine</option>
-            </select>
-            <label class="inlineToggle">
-              <input type="checkbox" data-param="singleOsc" />
-              <span>Single</span>
-            </label>
-          </div>
-          <output data-out="singleOsc"></output>
         </label>
 
         <label class="row" data-mode="texture">
