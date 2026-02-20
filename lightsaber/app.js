@@ -255,16 +255,13 @@
         };
     const mode = RNG.pick(modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
-    p.textureBehavior = RNG.pick(
-      behaviorByMode.texture && behaviorByMode.texture.length
-        ? behaviorByMode.texture
+    const pickBehavior = (modeName) => RNG.pick(
+      behaviorByMode[modeName] && behaviorByMode[modeName].length
+        ? behaviorByMode[modeName]
         : ["sustain", "oneshot"]
     );
-    p.bassBehavior = RNG.pick(
-      behaviorByMode.bass && behaviorByMode.bass.length
-        ? behaviorByMode.bass
-        : ["sustain", "oneshot"]
-    );
+    p.textureBehavior = pickBehavior("texture");
+    p.bassBehavior = pickBehavior("bass");
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
 
@@ -301,11 +298,7 @@
     p.bassDrift = +RNG.range(0.0, 0.3).toFixed(2);
 
     p.noiseType = RNG.pick(["white", "pink", "bit", "metallic"]);
-    p.noiseBehavior = RNG.pick(
-      behaviorByMode.noise && behaviorByMode.noise.length
-        ? behaviorByMode.noise
-        : ["sustain", "oneshot"]
-    );
+    p.noiseBehavior = pickBehavior("noise");
     const textureEp = makeEnvelopeEndpoints(
       RNG.range(40, 1400),
       RNG.range(150, 2600),
@@ -347,6 +340,12 @@
     p.noiseCrackleAmt = +RNG.range(0.0, 1.0).toFixed(2);
     p.noiseCrackleHPF = Math.round(RNG.range(500, 8000));
     p.noiseEdgeDrive = +RNG.range(0, 1).toFixed(2);
+
+    // Enforce active mode behavior from the current randomize filter.
+    if (mode === "texture") p.textureBehavior = pickBehavior("texture");
+    if (mode === "bass") p.bassBehavior = pickBehavior("bass");
+    if (mode === "noise") p.noiseBehavior = pickBehavior("noise");
+
     normalizeTextureEnvelope(p);
     normalizeBassEnvelope(p);
     normalizeNoiseEnvelope(p);
@@ -887,7 +886,7 @@
           if (muted) {
             voiceOut.gain.cancelScheduledValues(t);
             voiceOut.gain.setTargetAtTime(0, t, 0.02);
-          } else if (forceTextureTrigger || t >= textureOneShotCooldownUntil) {
+          } else if (forceTextureTrigger || forceReplay) {
             triggerTextureOneShot(p, t);
           } else if (t >= textureGateUntil) {
             voiceOut.gain.cancelScheduledValues(t);
@@ -914,7 +913,7 @@
           if (muted) {
             voiceOut.gain.cancelScheduledValues(t);
             voiceOut.gain.setTargetAtTime(0, t, 0.02);
-          } else if (forceBassTrigger || t >= bassOneShotCooldownUntil) {
+          } else if (forceBassTrigger || forceReplay) {
             triggerBassOneShot(p, t);
           } else if (t >= bassGateUntil) {
             voiceOut.gain.cancelScheduledValues(t);
@@ -974,7 +973,7 @@
             noiseBoomGain.gain.setTargetAtTime(0, t, 0.02);
             noiseRingGain.gain.setTargetAtTime(0, t, 0.02);
             noiseCrackleGain.gain.setTargetAtTime(0, t, 0.02);
-          } else if (forceNoiseTrigger || t >= oneShotCooldownUntil) {
+          } else if (forceNoiseTrigger || forceReplay) {
             triggerNoiseOneShot(p, t, noiseGainValue);
             const ep = effectiveNoiseEndpoints(p);
             oneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
