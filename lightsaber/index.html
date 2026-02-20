@@ -56,6 +56,60 @@
           </select>
         </label>
 
+        <label class="row" data-mode="texture">
+          <span>Behavior</span>
+          <div class="rowInline behaviorInline">
+            <select data-param="textureBehavior">
+              <option value="sustain">Sustain</option>
+              <option value="oneshot">One-shot</option>
+            </select>
+            <button id="texturePlayBtn" class="miniActionBtn" type="button">Play</button>
+          </div>
+          <output data-out="textureBehavior"></output>
+        </label>
+
+        <label class="row noiseEnvelopeRow" data-mode="texture" data-texture-oneshot="1">
+          <span>Envelope</span>
+          <div class="envEditor">
+            <svg class="envViz" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polyline id="textureEnvLine" points="0,98 15,12 55,12 100,98"></polyline>
+            </svg>
+            <div class="envStack">
+              <label><span>A End</span><input type="range" min="0" max="5000" step="10" data-param="textureAms" /></label>
+              <label><span>S End</span><input type="range" min="0" max="5000" step="10" data-param="textureSms" /></label>
+              <label><span>D End</span><input type="range" min="0" max="5000" step="10" data-param="textureDms" /></label>
+            </div>
+          </div>
+          <output data-out="textureEnvelope">5000 ms</output>
+        </label>
+
+        <label class="row" data-mode="bass">
+          <span>Behavior</span>
+          <div class="rowInline behaviorInline">
+            <select data-param="bassBehavior">
+              <option value="sustain">Sustain</option>
+              <option value="oneshot">One-shot</option>
+            </select>
+            <button id="bassPlayBtn" class="miniActionBtn" type="button">Play</button>
+          </div>
+          <output data-out="bassBehavior"></output>
+        </label>
+
+        <label class="row noiseEnvelopeRow" data-mode="bass" data-bass-oneshot="1">
+          <span>Envelope</span>
+          <div class="envEditor">
+            <svg class="envViz" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              <polyline id="bassEnvLine" points="0,98 15,12 55,12 100,98"></polyline>
+            </svg>
+            <div class="envStack">
+              <label><span>A End</span><input type="range" min="0" max="5000" step="10" data-param="bassAms" /></label>
+              <label><span>S End</span><input type="range" min="0" max="5000" step="10" data-param="bassSms" /></label>
+              <label><span>D End</span><input type="range" min="0" max="5000" step="10" data-param="bassDms" /></label>
+            </div>
+          </div>
+          <output data-out="bassEnvelope">5000 ms</output>
+        </label>
+
         <label class="row" data-mode="noise">
           <span>Noise Type</span>
           <select data-param="noiseType">

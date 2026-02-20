@@ -6,7 +6,11 @@
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
   const randomizeModesWrap = document.getElementById("randomizeModes");
+  const texturePlayBtn = document.getElementById("texturePlayBtn");
+  const bassPlayBtn = document.getElementById("bassPlayBtn");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
+  const textureEnvLine = document.getElementById("textureEnvLine");
+  const bassEnvLine = document.getElementById("bassEnvLine");
   const noiseEnvLine = document.getElementById("noiseEnvLine");
   const startOverlay = document.getElementById("startOverlay");
   const startBtn = document.getElementById("startBtn");
@@ -17,6 +21,16 @@
   //
   const PARAMS = [
     { key: "mode", label: "Mode" },
+    { key: "textureBehavior", label: "Texture Behavior" },
+    { key: "textureAms", label: "Texture A ms" },
+    { key: "textureSms", label: "Texture S ms" },
+    { key: "textureDms", label: "Texture D ms" },
+    { key: "textureEnvelope", label: "Texture Envelope" },
+    { key: "bassBehavior", label: "Bass Behavior" },
+    { key: "bassAms", label: "Bass A ms" },
+    { key: "bassSms", label: "Bass S ms" },
+    { key: "bassDms", label: "Bass D ms" },
+    { key: "bassEnvelope", label: "Bass Envelope" },
     { key: "oscType", label: "Oscillator" },
     { key: "singleOsc", label: "Single Osc" },
     { key: "unisonSpread", label: "Unison Spread" },
@@ -85,12 +99,12 @@
       return arr[Math.floor(RNG.next() * arr.length)];
     }
   };
-  const NOISE_ENV_TOTAL_MS = 5000;
+  const ENV_TOTAL_MS = 5000;
 
-  function makeNoiseEndpoints(aDur, sDur, dDur) {
-    const a = clamp(Math.round(aDur), 0, NOISE_ENV_TOTAL_MS);
-    const s = clamp(Math.round(a + sDur), a, NOISE_ENV_TOTAL_MS);
-    const d = clamp(Math.round(s + dDur), s, NOISE_ENV_TOTAL_MS);
+  function makeEnvelopeEndpoints(aDur, sDur, dDur) {
+    const a = clamp(Math.round(aDur), 0, ENV_TOTAL_MS);
+    const s = clamp(Math.round(a + sDur), a, ENV_TOTAL_MS);
+    const d = clamp(Math.round(s + dDur), s, ENV_TOTAL_MS);
     return { a, s, d };
   }
 
@@ -107,13 +121,31 @@
   }
 
   const defaults = () => {
-    const ep = makeNoiseEndpoints(
+    const textureEp = makeEnvelopeEndpoints(
+      RNG.range(100, 900),
+      RNG.range(350, 2200),
+      RNG.range(500, 2600)
+    );
+    const bassEp = makeEnvelopeEndpoints(
+      RNG.range(120, 1000),
+      RNG.range(600, 2600),
+      RNG.range(700, 2600)
+    );
+    const noiseEp = makeEnvelopeEndpoints(
       RNG.range(80, 900),
       RNG.range(300, 1800),
       RNG.range(400, 1800)
     );
     return {
       mode: "texture",
+      textureBehavior: RNG.next() < 0.25 ? "oneshot" : "sustain",
+      textureAms: textureEp.a,
+      textureSms: textureEp.s,
+      textureDms: textureEp.d,
+      bassBehavior: RNG.next() < 0.25 ? "oneshot" : "sustain",
+      bassAms: bassEp.a,
+      bassSms: bassEp.s,
+      bassDms: bassEp.d,
       oscType: RNG.pick(["sawtooth", "square", "triangle", "sine"]),
       singleOsc: false,
       unisonSpread: +RNG.range(0.0, 0.012).toFixed(4),
@@ -143,9 +175,9 @@
       bassDrift: +RNG.range(0.0, 0.3).toFixed(2),
       noiseType: RNG.pick(["white", "pink", "bit", "metallic"]),
       noiseBehavior: RNG.next() < 0.3 ? "oneshot" : "sustain",
-      noiseAms: ep.a,
-      noiseSms: ep.s,
-      noiseDms: ep.d,
+      noiseAms: noiseEp.a,
+      noiseSms: noiseEp.s,
+      noiseDms: noiseEp.d,
       noisePeak: +RNG.range(0.35, 1.0).toFixed(2),
       noiseLPStart: Math.round(RNG.range(1200, 9000)),
       noiseLPEnd: Math.round(RNG.range(80, 900)),
@@ -181,6 +213,8 @@
     const rand = RNG.next.bind(RNG);
     const mode = RNG.pick(modePool && modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
+    p.textureBehavior = RNG.next() < 0.28 ? "oneshot" : "sustain";
+    p.bassBehavior = RNG.next() < 0.28 ? "oneshot" : "sustain";
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
 
@@ -218,7 +252,25 @@
 
     p.noiseType = RNG.pick(["white", "pink", "bit", "metallic"]);
     p.noiseBehavior = RNG.next() < 0.35 ? "oneshot" : "sustain";
-    const ep = makeNoiseEndpoints(
+    const textureEp = makeEnvelopeEndpoints(
+      RNG.range(40, 1400),
+      RNG.range(150, 2600),
+      RNG.range(200, 2800)
+    );
+    p.textureAms = textureEp.a;
+    p.textureSms = textureEp.s;
+    p.textureDms = textureEp.d;
+
+    const bassEp = makeEnvelopeEndpoints(
+      RNG.range(60, 1600),
+      RNG.range(250, 2800),
+      RNG.range(300, 2800)
+    );
+    p.bassAms = bassEp.a;
+    p.bassSms = bassEp.s;
+    p.bassDms = bassEp.d;
+
+    const ep = makeEnvelopeEndpoints(
       RNG.range(40, 1200),
       RNG.range(150, 2200),
       RNG.range(200, 2200)
@@ -241,40 +293,104 @@
     p.noiseCrackleAmt = +RNG.range(0.0, 1.0).toFixed(2);
     p.noiseCrackleHPF = Math.round(RNG.range(500, 8000));
     p.noiseEdgeDrive = +RNG.range(0, 1).toFixed(2);
+    normalizeTextureEnvelope(p);
+    normalizeBassEnvelope(p);
     normalizeNoiseEnvelope(p);
   }
 
+  function normalizeTextureEnvelope(p) {
+    p.textureAms = clamp(Math.round(p.textureAms ?? 0), 0, ENV_TOTAL_MS);
+    p.textureSms = clamp(Math.round(p.textureSms ?? 0), 0, ENV_TOTAL_MS);
+    p.textureDms = clamp(Math.round(p.textureDms ?? ENV_TOTAL_MS), 0, ENV_TOTAL_MS);
+  }
+
+  function normalizeBassEnvelope(p) {
+    p.bassAms = clamp(Math.round(p.bassAms ?? 0), 0, ENV_TOTAL_MS);
+    p.bassSms = clamp(Math.round(p.bassSms ?? 0), 0, ENV_TOTAL_MS);
+    p.bassDms = clamp(Math.round(p.bassDms ?? ENV_TOTAL_MS), 0, ENV_TOTAL_MS);
+  }
+
   function normalizeNoiseEnvelope(p) {
-    let a = clamp(Math.round(p.noiseAms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-    let s = clamp(Math.round(p.noiseSms ?? 0), 0, NOISE_ENV_TOTAL_MS);
-    let d = clamp(Math.round(p.noiseDms ?? NOISE_ENV_TOTAL_MS), 0, NOISE_ENV_TOTAL_MS);
+    let a = clamp(Math.round(p.noiseAms ?? 0), 0, ENV_TOTAL_MS);
+    let s = clamp(Math.round(p.noiseSms ?? 0), 0, ENV_TOTAL_MS);
+    let d = clamp(Math.round(p.noiseDms ?? ENV_TOTAL_MS), 0, ENV_TOTAL_MS);
     p.noiseAms = a;
     p.noiseSms = s;
     p.noiseDms = d;
   }
 
+  function rebalanceTextureEnvelope(p, changedKey, rawValue) {
+    if (changedKey === "textureAms" || changedKey === "textureSms" || changedKey === "textureDms") {
+      p[changedKey] = clamp(Math.round(rawValue), 0, ENV_TOTAL_MS);
+    }
+    normalizeTextureEnvelope(p);
+  }
+
+  function rebalanceBassEnvelope(p, changedKey, rawValue) {
+    if (changedKey === "bassAms" || changedKey === "bassSms" || changedKey === "bassDms") {
+      p[changedKey] = clamp(Math.round(rawValue), 0, ENV_TOTAL_MS);
+    }
+    normalizeBassEnvelope(p);
+  }
+
   function rebalanceNoiseEnvelope(p, changedKey, rawValue) {
     if (changedKey === "noiseAms" || changedKey === "noiseSms" || changedKey === "noiseDms") {
-      p[changedKey] = clamp(Math.round(rawValue), 0, NOISE_ENV_TOTAL_MS);
+      p[changedKey] = clamp(Math.round(rawValue), 0, ENV_TOTAL_MS);
     }
     normalizeNoiseEnvelope(p);
   }
 
-  function effectiveNoiseEndpoints(p) {
-    const a = clamp(Math.round(p.noiseAms || 0), 0, NOISE_ENV_TOTAL_MS);
-    const sRaw = clamp(Math.round(p.noiseSms || 0), 0, NOISE_ENV_TOTAL_MS);
-    const dRaw = clamp(Math.round(p.noiseDms || 0), 0, NOISE_ENV_TOTAL_MS);
+  function effectiveTextureEndpoints(p) {
+    const a = clamp(Math.round(p.textureAms || 0), 0, ENV_TOTAL_MS);
+    const sRaw = clamp(Math.round(p.textureSms || 0), 0, ENV_TOTAL_MS);
+    const dRaw = clamp(Math.round(p.textureDms || 0), 0, ENV_TOTAL_MS);
     const s = Math.max(a, sRaw);
     const d = Math.max(s, dRaw);
     return { a, s, d };
   }
 
+  function effectiveBassEndpoints(p) {
+    const a = clamp(Math.round(p.bassAms || 0), 0, ENV_TOTAL_MS);
+    const sRaw = clamp(Math.round(p.bassSms || 0), 0, ENV_TOTAL_MS);
+    const dRaw = clamp(Math.round(p.bassDms || 0), 0, ENV_TOTAL_MS);
+    const s = Math.max(a, sRaw);
+    const d = Math.max(s, dRaw);
+    return { a, s, d };
+  }
+
+  function effectiveNoiseEndpoints(p) {
+    const a = clamp(Math.round(p.noiseAms || 0), 0, ENV_TOTAL_MS);
+    const sRaw = clamp(Math.round(p.noiseSms || 0), 0, ENV_TOTAL_MS);
+    const dRaw = clamp(Math.round(p.noiseDms || 0), 0, ENV_TOTAL_MS);
+    const s = Math.max(a, sRaw);
+    const d = Math.max(s, dRaw);
+    return { a, s, d };
+  }
+
+  function updateTextureEnvelopeViz(p) {
+    if (!textureEnvLine || !p) return;
+    const ep = effectiveTextureEndpoints(p);
+    const ax = (ep.a / ENV_TOTAL_MS) * 100;
+    const sx = (ep.s / ENV_TOTAL_MS) * 100;
+    const dx = (ep.d / ENV_TOTAL_MS) * 100;
+    textureEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 ${dx.toFixed(2)},98`);
+  }
+
+  function updateBassEnvelopeViz(p) {
+    if (!bassEnvLine || !p) return;
+    const ep = effectiveBassEndpoints(p);
+    const ax = (ep.a / ENV_TOTAL_MS) * 100;
+    const sx = (ep.s / ENV_TOTAL_MS) * 100;
+    const dx = (ep.d / ENV_TOTAL_MS) * 100;
+    bassEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 ${dx.toFixed(2)},98`);
+  }
+
   function updateNoiseEnvelopeViz(p) {
     if (!noiseEnvLine || !p) return;
     const ep = effectiveNoiseEndpoints(p);
-    const ax = (ep.a / NOISE_ENV_TOTAL_MS) * 100;
-    const sx = (ep.s / NOISE_ENV_TOTAL_MS) * 100;
-    const dx = (ep.d / NOISE_ENV_TOTAL_MS) * 100;
+    const ax = (ep.a / ENV_TOTAL_MS) * 100;
+    const sx = (ep.s / ENV_TOTAL_MS) * 100;
+    const dx = (ep.d / ENV_TOTAL_MS) * 100;
     noiseEnvLine.setAttribute("points", `0,98 ${ax.toFixed(2)},12 ${sx.toFixed(2)},12 ${dx.toFixed(2)},98`);
   }
 
@@ -537,6 +653,8 @@
     bassOsc.start();
     noise.start();
 
+    let textureOneShotCooldownUntil = 0;
+    let bassOneShotCooldownUntil = 0;
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
 
@@ -555,12 +673,30 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
+    function triggerTextureOneShot(p, t, level) {
+      const ep = effectiveTextureEndpoints(p);
+      const a = ep.a / 1000;
+      const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
+      const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
+      applyOneShotEnv(gain, t, a, s, d, level);
+      textureOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
+    }
+
+    function triggerBassOneShot(p, t, level) {
+      const ep = effectiveBassEndpoints(p);
+      const a = ep.a / 1000;
+      const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
+      const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
+      applyOneShotEnv(bassGain, t, a, s, d, level);
+      bassOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
+    }
+
     function triggerNoiseOneShot(p, t, level) {
       const profile = noiseTypeProfile(p.noiseType);
       const ep = effectiveNoiseEndpoints(p);
       const aMs = ep.a;
-      const sMs = clamp(ep.s - ep.a, 0, NOISE_ENV_TOTAL_MS);
-      const dMs = clamp(ep.d - ep.s, 0, NOISE_ENV_TOTAL_MS);
+      const sMs = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS);
+      const dMs = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS);
       const a = aMs / 1000;
       const s = sMs / 1000;
       const d = dMs / 1000;
@@ -593,10 +729,13 @@
 
     function apply(p, muted, width, basePan, opts = {}) {
       const forceNoiseTrigger = !!opts.forceNoiseTrigger;
+      const forceTextureTrigger = !!opts.forceTextureTrigger;
+      const forceBassTrigger = !!opts.forceBassTrigger;
       const forceReplay = !!opts.forceReplay;
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
+      const isTexture = !isBass && !isNoise;
       const textureGain = clamp(p.gain, 0, 0.8);
       const bassGainBoost = 2.0;
       const bassGainValue = clamp(p.gain * bassGainBoost, 0, 1.6);
@@ -635,11 +774,21 @@
       edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
 
       drive.setAmount(p.drive);
-      if (forceReplay && !muted) {
-        gain.gain.cancelScheduledValues(t);
-        gain.gain.setValueAtTime(0, t);
+      if (isTexture && p.textureBehavior === "oneshot") {
+        if (muted) {
+          gain.gain.cancelScheduledValues(t);
+          gain.gain.setTargetAtTime(0, t, 0.02);
+        } else if (forceReplay || forceTextureTrigger || t >= textureOneShotCooldownUntil) {
+          triggerTextureOneShot(p, t, textureGain);
+        }
+      } else {
+        textureOneShotCooldownUntil = 0;
+        if (forceReplay && !muted) {
+          gain.gain.cancelScheduledValues(t);
+          gain.gain.setValueAtTime(0, t);
+        }
+        gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
       }
-      gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
       const mainTarget = isBass || isNoise ? 0 : 1;
@@ -647,11 +796,21 @@
 
       if (isBass) {
         const bassTarget = muted ? 0 : bassGainValue;
-        if (forceReplay && !muted) {
-          bassGain.gain.cancelScheduledValues(t);
-          bassGain.gain.setValueAtTime(0, t);
+        if (p.bassBehavior === "oneshot") {
+          if (muted) {
+            bassGain.gain.cancelScheduledValues(t);
+            bassGain.gain.setTargetAtTime(0, t, 0.02);
+          } else if (forceReplay || forceBassTrigger || t >= bassOneShotCooldownUntil) {
+            triggerBassOneShot(p, t, bassTarget);
+          }
+        } else {
+          bassOneShotCooldownUntil = 0;
+          if (forceReplay && !muted) {
+            bassGain.gain.cancelScheduledValues(t);
+            bassGain.gain.setValueAtTime(0, t);
+          }
+          bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
         }
-        bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
 
         bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
         bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
@@ -680,6 +839,7 @@
         bassLfoLPFGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoResGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoDriveGain.gain.setTargetAtTime(0, t, 0.05);
+        bassOneShotCooldownUntil = 0;
       }
 
       if (isNoise) {
@@ -808,6 +968,14 @@
       if (p.gain == null) p.gain = 0.5;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
       if (p.spatialize == null) p.spatialize = 0.5;
+      if (p.textureBehavior == null) p.textureBehavior = "sustain";
+      if (p.textureAms == null) p.textureAms = 240;
+      if (p.textureSms == null) p.textureSms = 1900;
+      if (p.textureDms == null) p.textureDms = 4300;
+      if (p.bassBehavior == null) p.bassBehavior = "sustain";
+      if (p.bassAms == null) p.bassAms = 260;
+      if (p.bassSms == null) p.bassSms = 2100;
+      if (p.bassDms == null) p.bassDms = 4600;
       if (p.noiseAms == null) p.noiseAms = 400;
       if (p.noiseSms == null) p.noiseSms = 1400;
       if (p.noiseDms == null) p.noiseDms = 3200;
@@ -826,6 +994,8 @@
       if (p.noiseCrackleAmt == null) p.noiseCrackleAmt = 0.2;
       if (p.noiseCrackleHPF == null) p.noiseCrackleHPF = 1600;
       if (p.noiseEdgeDrive == null) p.noiseEdgeDrive = 0.45;
+      normalizeTextureEnvelope(p);
+      normalizeBassEnvelope(p);
       normalizeNoiseEnvelope(p);
       state.voiceParams[i] = p;
       if (!state.activeTracks[i]) state.muted[i] = true;
@@ -838,6 +1008,8 @@
     p.gain = 0.5;
     p.stereoWidth = 0.5;
     p.spatialize = 0.5;
+    normalizeTextureEnvelope(p);
+    normalizeBassEnvelope(p);
     normalizeNoiseEnvelope(p);
     return p;
   }
@@ -947,6 +1119,8 @@
           p.gain = 0.5;
           p.stereoWidth = 0.5;
           p.spatialize = 0.5;
+          normalizeTextureEnvelope(p);
+          normalizeBassEnvelope(p);
           normalizeNoiseEnvelope(p);
           state.voiceParams[i] = p;
           state.active = i;
@@ -1126,20 +1300,46 @@
       } else {
         input.value = p[key];
       }
-      if (key === "noiseAms" || key === "noiseSms" || key === "noiseDms") {
+      if (
+        key === "textureAms" || key === "textureSms" || key === "textureDms" ||
+        key === "bassAms" || key === "bassSms" || key === "bassDms" ||
+        key === "noiseAms" || key === "noiseSms" || key === "noiseDms"
+      ) {
         input.min = 0;
-        input.max = NOISE_ENV_TOTAL_MS;
+        input.max = ENV_TOTAL_MS;
       }
       input.disabled = state.active == null || effectiveMuted(state.active);
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
+    const textureEnvOut = controls.querySelector("[data-out='textureEnvelope']");
+    if (textureEnvOut && p) {
+      const ep = effectiveTextureEndpoints(p);
+      textureEnvOut.textContent = `${Math.round(ep.d)} ms`;
+    }
+    const bassEnvOut = controls.querySelector("[data-out='bassEnvelope']");
+    if (bassEnvOut && p) {
+      const ep = effectiveBassEndpoints(p);
+      bassEnvOut.textContent = `${Math.round(ep.d)} ms`;
+    }
     const envOut = controls.querySelector("[data-out='noiseEnvelope']");
     if (envOut && p) {
       const ep = effectiveNoiseEndpoints(p);
       envOut.textContent = `${Math.round(ep.d)} ms`;
     }
+    updateTextureEnvelopeViz(p);
+    updateBassEnvelopeViz(p);
     updateNoiseEnvelopeViz(p);
+    if (texturePlayBtn) {
+      const showTexturePlay = hasActive && p && p.mode === "texture" && p.textureBehavior === "oneshot";
+      texturePlayBtn.style.display = showTexturePlay ? "inline-flex" : "none";
+      texturePlayBtn.disabled = !showTexturePlay || effectiveMuted(activeIndex);
+    }
+    if (bassPlayBtn) {
+      const showBassPlay = hasActive && p && p.mode === "bass" && p.bassBehavior === "oneshot";
+      bassPlayBtn.style.display = showBassPlay ? "inline-flex" : "none";
+      bassPlayBtn.disabled = !showBassPlay || effectiveMuted(activeIndex);
+    }
     if (noisePlayBtn) {
       const showPlay = hasActive && p && p.mode === "noise" && p.noiseBehavior === "oneshot";
       noisePlayBtn.style.display = showPlay ? "inline-flex" : "none";
@@ -1150,6 +1350,16 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "textureBehavior") return value === "oneshot" ? "One-shot" : "Sustain";
+    if (key === "textureAms") return `${Math.round(value)} ms`;
+    if (key === "textureSms") return `${Math.round(value)} ms`;
+    if (key === "textureDms") return `${Math.round(value)} ms`;
+    if (key === "textureEnvelope") return `${Math.round(value || 0)} ms`;
+    if (key === "bassBehavior") return value === "oneshot" ? "One-shot" : "Sustain";
+    if (key === "bassAms") return `${Math.round(value)} ms`;
+    if (key === "bassSms") return `${Math.round(value)} ms`;
+    if (key === "bassDms") return `${Math.round(value)} ms`;
+    if (key === "bassEnvelope") return `${Math.round(value || 0)} ms`;
     if (key === "noiseType") return value;
     if (key === "noiseBehavior") return value === "oneshot" ? "One-shot" : "Sustain";
     if (key === "noiseAms") return `${Math.round(value)} ms`;
@@ -1216,6 +1426,38 @@
         p[key] = parseFloat(target.value);
       }
 
+      if (key === "textureAms" || key === "textureSms" || key === "textureDms") {
+        rebalanceTextureEnvelope(p, key, p[key]);
+        const aIn = controls.querySelector("[data-param='textureAms']");
+        const sIn = controls.querySelector("[data-param='textureSms']");
+        const dIn = controls.querySelector("[data-param='textureDms']");
+        if (aIn) aIn.value = p.textureAms;
+        if (sIn) sIn.value = p.textureSms;
+        if (dIn) dIn.value = p.textureDms;
+        const envOut = controls.querySelector("[data-out='textureEnvelope']");
+        if (envOut) {
+          const ep = effectiveTextureEndpoints(p);
+          envOut.textContent = `${Math.round(ep.d)} ms`;
+        }
+        updateTextureEnvelopeViz(p);
+      }
+
+      if (key === "bassAms" || key === "bassSms" || key === "bassDms") {
+        rebalanceBassEnvelope(p, key, p[key]);
+        const aIn = controls.querySelector("[data-param='bassAms']");
+        const sIn = controls.querySelector("[data-param='bassSms']");
+        const dIn = controls.querySelector("[data-param='bassDms']");
+        if (aIn) aIn.value = p.bassAms;
+        if (sIn) sIn.value = p.bassSms;
+        if (dIn) dIn.value = p.bassDms;
+        const envOut = controls.querySelector("[data-out='bassEnvelope']");
+        if (envOut) {
+          const ep = effectiveBassEndpoints(p);
+          envOut.textContent = `${Math.round(ep.d)} ms`;
+        }
+        updateBassEnvelopeViz(p);
+      }
+
       if (key === "noiseAms" || key === "noiseSms" || key === "noiseDms") {
         rebalanceNoiseEnvelope(p, key, p[key]);
         const aIn = controls.querySelector("[data-param='noiseAms']");
@@ -1236,7 +1478,12 @@
       if (out) out.textContent = formatValue(key, p[key]);
 
       applyVoice(state.active);
-      if (key === "mode" || key === "noiseBehavior") {
+      if (
+        key === "mode" ||
+        key === "textureBehavior" ||
+        key === "bassBehavior" ||
+        key === "noiseBehavior"
+      ) {
         applyModeVisibility(p.mode);
         syncControls();
       }
@@ -1244,6 +1491,28 @@
 
     controls.addEventListener("input", onControlChange);
     controls.addEventListener("change", onControlChange);
+
+    if (texturePlayBtn) {
+      texturePlayBtn.addEventListener("click", async () => {
+        const i = state.active;
+        if (!state.activeTracks[i]) return;
+        const p = state.voiceParams[i];
+        if (!p || p.mode !== "texture" || p.textureBehavior !== "oneshot") return;
+        await startAudio();
+        applyVoice(i, { forceTextureTrigger: true });
+      });
+    }
+
+    if (bassPlayBtn) {
+      bassPlayBtn.addEventListener("click", async () => {
+        const i = state.active;
+        if (!state.activeTracks[i]) return;
+        const p = state.voiceParams[i];
+        if (!p || p.mode !== "bass" || p.bassBehavior !== "oneshot") return;
+        await startAudio();
+        applyVoice(i, { forceBassTrigger: true });
+      });
+    }
 
     if (noisePlayBtn) {
       noisePlayBtn.addEventListener("click", async () => {
@@ -1265,11 +1534,23 @@
       row.style.display = show ? "" : "none";
     });
     const p = state.voiceParams[state.active] || {};
+    const textureOneShotRows = controls.querySelectorAll("[data-texture-oneshot]");
+    textureOneShotRows.forEach((row) => {
+      if (mode !== "texture") return;
+      row.style.display = p.textureBehavior === "oneshot" ? "" : "none";
+    });
+    const bassOneShotRows = controls.querySelectorAll("[data-bass-oneshot]");
+    bassOneShotRows.forEach((row) => {
+      if (mode !== "bass") return;
+      row.style.display = p.bassBehavior === "oneshot" ? "" : "none";
+    });
     const oneShotRows = controls.querySelectorAll("[data-noise-oneshot]");
     oneShotRows.forEach((row) => {
       if (mode !== "noise") return;
       row.style.display = p.noiseBehavior === "oneshot" ? "" : "none";
     });
+    if (texturePlayBtn && mode !== "texture") texturePlayBtn.style.display = "none";
+    if (bassPlayBtn && mode !== "bass") bassPlayBtn.style.display = "none";
     if (noisePlayBtn && mode !== "noise") noisePlayBtn.style.display = "none";
   }
 
@@ -1323,6 +1604,8 @@
         p.gain = 0.5;
         p.stereoWidth = 0.5;
         p.spatialize = 0.5;
+        normalizeTextureEnvelope(p);
+        normalizeBassEnvelope(p);
         normalizeNoiseEnvelope(p);
         state.voiceParams[i] = p;
       }
