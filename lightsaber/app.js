@@ -1658,8 +1658,8 @@
     if (startOverlay) startOverlay.style.display = "none";
   }
 
-  function regenerate() {
-    startAudio();
+  async function regenerate() {
+    await startAudio();
     const randomizeConfig = getRandomizeConfig();
     for (let i = 0; i < state.voiceParams.length; i++) {
       if (!state.activeTracks[i]) continue;
@@ -1675,12 +1675,10 @@
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
-      if (state.voices[i]) {
-        applyVoice(i);
-      }
     }
     renderVoices();
     syncControls();
+    await replayAllVoices();
   }
 
   async function replayAllVoices() {
