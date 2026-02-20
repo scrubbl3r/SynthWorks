@@ -14,6 +14,8 @@
   const noiseEnvLine = document.getElementById("noiseEnvLine");
   const startOverlay = document.getElementById("startOverlay");
   const startBtn = document.getElementById("startBtn");
+  const LOCKED_ICON = "🔒";
+  const UNLOCKED_ICON = "🔓";
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const clamp01 = (v) => clamp(v, 0, 1);
@@ -452,6 +454,7 @@
     master: null,
     voices: [],
     voiceParams: [],
+    paramLocks: [],
     frozen: [false, false, false, false, false],
     muted: [false, true, true, true, true],
     activeTracks: [true, false, false, false, false],
@@ -460,6 +463,11 @@
     playing: true,
     soloIndex: null
   };
+
+  function ensureParamLocks(index) {
+    if (!state.paramLocks[index]) state.paramLocks[index] = {};
+    return state.paramLocks[index];
+  }
 
   function ensureAudio() {
     if (state.ctx) return state.ctx;
@@ -1058,6 +1066,7 @@
     for (let i = 0; i < 5; i++) {
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
       const p = state.voiceParams[i] || defaults();
+      ensureParamLocks(i);
       if (p.gain == null) p.gain = 0.5;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
       if (p.spatialize == null) p.spatialize = 0.5;
@@ -1111,6 +1120,7 @@
     const n = state.activeTracks.length;
     const oldActiveTracks = state.activeTracks.slice();
     const oldVoiceParams = state.voiceParams.slice();
+    const oldParamLocks = state.paramLocks.slice();
     const oldMuted = state.muted.slice();
     const oldFrozen = state.frozen.slice();
     const oldActive = state.active;
@@ -1129,11 +1139,13 @@
         const oldIdx = enabledOld[i];
         state.activeTracks[i] = true;
         state.voiceParams[i] = oldVoiceParams[oldIdx] || makeDefaultVoice();
+        state.paramLocks[i] = Object.assign({}, oldParamLocks[oldIdx] || {});
         state.muted[i] = !!oldMuted[oldIdx];
         state.frozen[i] = !!oldFrozen[oldIdx];
       } else {
         state.activeTracks[i] = false;
         state.voiceParams[i] = makeDefaultVoice();
+        state.paramLocks[i] = {};
         state.muted[i] = true;
         state.frozen[i] = false;
       }
@@ -1216,6 +1228,7 @@
           normalizeBassEnvelope(p);
           normalizeNoiseEnvelope(p);
           state.voiceParams[i] = p;
+          state.paramLocks[i] = {};
           state.active = i;
           if (state.soloIndex != null) {
             state.soloIndex = i;
@@ -1257,6 +1270,7 @@
         state.muted[i] = true;
         state.frozen[i] = false;
         state.voiceParams[i] = makeDefaultVoice();
+        state.paramLocks[i] = {};
         applyVoice(i);
         compactTracksLeft();
         if (deletingSoloTarget) {
@@ -1295,6 +1309,7 @@
         state.muted[target] = false;
         state.frozen[target] = false;
         state.voiceParams[target] = JSON.parse(JSON.stringify(state.voiceParams[i]));
+        state.paramLocks[target] = JSON.parse(JSON.stringify(state.paramLocks[i] || {}));
         state.active = target;
         if (state.soloIndex != null) state.soloIndex = target;
         applyAllVoices();
@@ -1423,6 +1438,16 @@
     updateTextureEnvelopeViz(p);
     updateBassEnvelopeViz(p);
     updateNoiseEnvelopeViz(p);
+    const lockBtns = controls.querySelectorAll("button[data-lock-param]");
+    lockBtns.forEach((btn) => {
+      const key = btn.dataset.lockParam;
+      const locked = !!(state.activeTracks[activeIndex] && state.paramLocks[activeIndex] && state.paramLocks[activeIndex][key]);
+      btn.textContent = locked ? LOCKED_ICON : UNLOCKED_ICON;
+      btn.classList.toggle("locked", locked);
+      btn.setAttribute("aria-label", locked ? `Randomize lock on for ${key}` : `Randomize lock off for ${key}`);
+      btn.title = locked ? "Locked: protected from randomize" : "Unlocked: randomizable";
+      btn.disabled = !hasActive || !p;
+    });
     if (texturePlayBtn) {
       const showTexturePlay = hasActive && p && p.mode === "texture" && p.textureBehavior === "oneshot";
       texturePlayBtn.style.display = showTexturePlay ? "inline-flex" : "none";
@@ -1584,6 +1609,17 @@
 
     controls.addEventListener("input", onControlChange);
     controls.addEventListener("change", onControlChange);
+    controls.addEventListener("click", (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest("button[data-lock-param]") : null;
+      if (!btn) return;
+      const i = state.active;
+      if (i == null || !state.activeTracks[i]) return;
+      const key = String(btn.dataset.lockParam || "");
+      if (!key) return;
+      const locks = ensureParamLocks(i);
+      locks[key] = !locks[key];
+      syncControls();
+    });
 
     if (texturePlayBtn) {
       texturePlayBtn.addEventListener("click", async () => {
@@ -1658,6 +1694,37 @@
     if (startOverlay) startOverlay.style.display = "none";
   }
 
+  function ensureRandomizeLockUI() {
+    const rows = controls.querySelectorAll(".row");
+    rows.forEach((row) => {
+      if (row.dataset.hasRandomizeLock === "1") return;
+      const input = row.querySelector("[data-param]");
+      if (!input || !input.dataset || !input.dataset.param) return;
+      const key = String(input.dataset.param);
+      const output = row.querySelector(`output[data-out='${key}']`) || row.querySelector("output");
+      const meta = document.createElement("div");
+      meta.className = "rowMeta";
+
+      if (output && output.parentElement) {
+        output.classList.add("paramOut");
+        output.parentElement.removeChild(output);
+        meta.appendChild(output);
+      }
+
+      const lockBtn = document.createElement("button");
+      lockBtn.type = "button";
+      lockBtn.className = "paramLockBtn";
+      lockBtn.dataset.lockParam = key;
+      lockBtn.textContent = UNLOCKED_ICON;
+      lockBtn.setAttribute("aria-label", `Randomize lock off for ${key}`);
+      lockBtn.title = "Unlocked: randomizable";
+      meta.appendChild(lockBtn);
+
+      row.appendChild(meta);
+      row.dataset.hasRandomizeLock = "1";
+    });
+  }
+
   async function regenerate() {
     await startAudio();
     const randomizeConfig = getRandomizeConfig();
@@ -1665,12 +1732,18 @@
       if (!state.activeTracks[i]) continue;
       if (state.frozen[i]) continue;
       const p = state.voiceParams[i] || defaults();
+      const prev = Object.assign({}, p);
       const keep = {
         gain: p.gain ?? 0.5,
         stereoWidth: p.stereoWidth ?? 0.5,
         spatialize: p.spatialize ?? 0.5
       };
       randomizeVoice(p, randomizeConfig);
+      const locks = state.paramLocks[i] || {};
+      Object.keys(locks).forEach((key) => {
+        if (!locks[key]) return;
+        if (Object.prototype.hasOwnProperty.call(prev, key)) p[key] = prev[key];
+      });
       p.gain = keep.gain;
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;
@@ -1701,9 +1774,11 @@
         normalizeBassEnvelope(p);
         normalizeNoiseEnvelope(p);
         state.voiceParams[i] = p;
+        ensureParamLocks(i);
       }
     }
     renderVoices();
+    ensureRandomizeLockUI();
     attachControlHandlers();
     syncControls();
   }
