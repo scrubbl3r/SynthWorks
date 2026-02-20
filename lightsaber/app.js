@@ -563,6 +563,8 @@
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
+    const voiceOut = ctx.createGain();
+    voiceOut.gain.value = 0;
     noiseModeGain.connect(panner);
     noiseCrackleGain.connect(panner);
     noiseBoomGain.connect(panner);
@@ -582,7 +584,7 @@
       filter.connect(bp);
       bp.connect(g);
       g.connect(pan);
-      pan.connect(master);
+      pan.connect(voiceOut);
       spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
     });
 
@@ -595,7 +597,8 @@
     edgeGain.connect(drive.input);
 
     gain.connect(panner);
-    panner.connect(master);
+    panner.connect(voiceOut);
+    voiceOut.connect(master);
 
     const bassDrive = makeDrive(ctx);
     const bassLP = ctx.createBiquadFilter();
@@ -655,6 +658,8 @@
 
     let textureOneShotCooldownUntil = 0;
     let bassOneShotCooldownUntil = 0;
+    let textureGateUntil = 0;
+    let bassGateUntil = 0;
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
 
@@ -673,21 +678,23 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
-    function triggerTextureOneShot(p, t, level) {
+    function triggerTextureOneShot(p, t) {
       const ep = effectiveTextureEndpoints(p);
       const a = ep.a / 1000;
       const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
       const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
-      applyOneShotEnv(gain, t, a, s, d, level);
+      applyOneShotEnv(voiceOut, t, a, s, d, 1);
+      textureGateUntil = t + a + s + d;
       textureOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
     }
 
-    function triggerBassOneShot(p, t, level) {
+    function triggerBassOneShot(p, t) {
       const ep = effectiveBassEndpoints(p);
       const a = ep.a / 1000;
       const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
       const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
-      applyOneShotEnv(bassGain, t, a, s, d, level);
+      applyOneShotEnv(voiceOut, t, a, s, d, 1);
+      bassGateUntil = t + a + s + d;
       bassOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
     }
 
@@ -774,43 +781,15 @@
       edgeGain.gain.setTargetAtTime(p.edge, t, 0.04);
 
       drive.setAmount(p.drive);
-      if (isTexture && p.textureBehavior === "oneshot") {
-        if (muted) {
-          gain.gain.cancelScheduledValues(t);
-          gain.gain.setTargetAtTime(0, t, 0.02);
-        } else if (forceReplay || forceTextureTrigger || t >= textureOneShotCooldownUntil) {
-          triggerTextureOneShot(p, t, textureGain);
-        }
-      } else {
-        textureOneShotCooldownUntil = 0;
-        if (forceReplay && !muted) {
-          gain.gain.cancelScheduledValues(t);
-          gain.gain.setValueAtTime(0, t);
-        }
-        gain.gain.setTargetAtTime(muted ? 0 : textureGain, t, 0.04);
-      }
+      gain.gain.setTargetAtTime(textureGain, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
       const mainTarget = isBass || isNoise ? 0 : 1;
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
 
       if (isBass) {
-        const bassTarget = muted ? 0 : bassGainValue;
-        if (p.bassBehavior === "oneshot") {
-          if (muted) {
-            bassGain.gain.cancelScheduledValues(t);
-            bassGain.gain.setTargetAtTime(0, t, 0.02);
-          } else if (forceReplay || forceBassTrigger || t >= bassOneShotCooldownUntil) {
-            triggerBassOneShot(p, t, bassTarget);
-          }
-        } else {
-          bassOneShotCooldownUntil = 0;
-          if (forceReplay && !muted) {
-            bassGain.gain.cancelScheduledValues(t);
-            bassGain.gain.setValueAtTime(0, t);
-          }
-          bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
-        }
+        const bassTarget = bassGainValue;
+        bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
 
         bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
         bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
@@ -842,7 +821,68 @@
         bassOneShotCooldownUntil = 0;
       }
 
+      if (isTexture) {
+        bassOneShotCooldownUntil = 0;
+        if (p.textureBehavior === "oneshot") {
+          if (forceReplay) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setValueAtTime(0, t);
+            textureOneShotCooldownUntil = 0;
+            textureGateUntil = 0;
+          }
+          if (muted) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setTargetAtTime(0, t, 0.02);
+          } else if (forceTextureTrigger || t >= textureOneShotCooldownUntil) {
+            triggerTextureOneShot(p, t);
+          } else if (t >= textureGateUntil) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setTargetAtTime(0, t, 0.01);
+          }
+        } else {
+          textureOneShotCooldownUntil = 0;
+          textureGateUntil = 0;
+          if (forceReplay && !muted) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setValueAtTime(0, t);
+          }
+          voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.04);
+        }
+      } else if (isBass) {
+        textureOneShotCooldownUntil = 0;
+        if (p.bassBehavior === "oneshot") {
+          if (forceReplay) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setValueAtTime(0, t);
+            bassOneShotCooldownUntil = 0;
+            bassGateUntil = 0;
+          }
+          if (muted) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setTargetAtTime(0, t, 0.02);
+          } else if (forceBassTrigger || t >= bassOneShotCooldownUntil) {
+            triggerBassOneShot(p, t);
+          } else if (t >= bassGateUntil) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setTargetAtTime(0, t, 0.01);
+          }
+        } else {
+          bassOneShotCooldownUntil = 0;
+          bassGateUntil = 0;
+          if (forceReplay && !muted) {
+            voiceOut.gain.cancelScheduledValues(t);
+            voiceOut.gain.setValueAtTime(0, t);
+          }
+          voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.04);
+        }
+      }
+
       if (isNoise) {
+        textureOneShotCooldownUntil = 0;
+        bassOneShotCooldownUntil = 0;
+        textureGateUntil = 0;
+        bassGateUntil = 0;
+        voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.03);
         if (forceReplay) {
           noiseGateOn = false;
           oneShotCooldownUntil = 0;
