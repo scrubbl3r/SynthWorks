@@ -199,22 +199,72 @@
     };
   };
 
-  function getEnabledRandomModes() {
-    if (!randomizeModesWrap) return ["texture", "bass", "noise"];
-    const boxes = randomizeModesWrap.querySelectorAll("input[data-randomize-mode]");
-    const enabled = [];
-    boxes.forEach((b) => {
-      if (b.checked) enabled.push(b.dataset.randomizeMode);
+  function getRandomizeConfig() {
+    const fallback = {
+      modePool: ["texture", "bass", "noise"],
+      behaviorByMode: {
+        texture: ["sustain", "oneshot"],
+        bass: ["sustain", "oneshot"],
+        noise: ["sustain", "oneshot"],
+      },
+    };
+    if (!randomizeModesWrap) return fallback;
+
+    const modeBoxes = randomizeModesWrap.querySelectorAll("input[data-randomize-mode]");
+    const behaviorBoxes = randomizeModesWrap.querySelectorAll("input[data-randomize-behavior]");
+    const checkedModes = new Set();
+    modeBoxes.forEach((b) => {
+      if (b.checked) checkedModes.add(b.dataset.randomizeMode);
     });
-    return enabled.length ? enabled : ["texture", "bass", "noise"];
+
+    const behaviorByMode = {
+      texture: [],
+      bass: [],
+      noise: [],
+    };
+    behaviorBoxes.forEach((b) => {
+      if (!b.checked) return;
+      const raw = String(b.dataset.randomizeBehavior || "");
+      const [mode, behavior] = raw.split(":");
+      if (!behaviorByMode[mode]) return;
+      if (behavior === "sustain" || behavior === "oneshot") {
+        behaviorByMode[mode].push(behavior);
+      }
+    });
+
+    const modePool = [];
+    checkedModes.forEach((mode) => {
+      if (behaviorByMode[mode] && behaviorByMode[mode].length) modePool.push(mode);
+    });
+
+    if (!modePool.length) return fallback;
+    return { modePool, behaviorByMode };
   }
 
-  function randomizeVoice(p, modePool) {
+  function randomizeVoice(p, randomizeConfig) {
     const rand = RNG.next.bind(RNG);
-    const mode = RNG.pick(modePool && modePool.length ? modePool : ["texture", "bass", "noise"]);
+    const modePool = randomizeConfig && Array.isArray(randomizeConfig.modePool)
+      ? randomizeConfig.modePool
+      : ["texture", "bass", "noise"];
+    const behaviorByMode = randomizeConfig && randomizeConfig.behaviorByMode
+      ? randomizeConfig.behaviorByMode
+      : {
+          texture: ["sustain", "oneshot"],
+          bass: ["sustain", "oneshot"],
+          noise: ["sustain", "oneshot"],
+        };
+    const mode = RNG.pick(modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
-    p.textureBehavior = RNG.next() < 0.28 ? "oneshot" : "sustain";
-    p.bassBehavior = RNG.next() < 0.28 ? "oneshot" : "sustain";
+    p.textureBehavior = RNG.pick(
+      behaviorByMode.texture && behaviorByMode.texture.length
+        ? behaviorByMode.texture
+        : ["sustain", "oneshot"]
+    );
+    p.bassBehavior = RNG.pick(
+      behaviorByMode.bass && behaviorByMode.bass.length
+        ? behaviorByMode.bass
+        : ["sustain", "oneshot"]
+    );
     p.oscType = RNG.pick(["sawtooth", "square", "triangle", "sine"]);
     p.singleOsc = false;
 
@@ -251,7 +301,11 @@
     p.bassDrift = +RNG.range(0.0, 0.3).toFixed(2);
 
     p.noiseType = RNG.pick(["white", "pink", "bit", "metallic"]);
-    p.noiseBehavior = RNG.next() < 0.35 ? "oneshot" : "sustain";
+    p.noiseBehavior = RNG.pick(
+      behaviorByMode.noise && behaviorByMode.noise.length
+        ? behaviorByMode.noise
+        : ["sustain", "oneshot"]
+    );
     const textureEp = makeEnvelopeEndpoints(
       RNG.range(40, 1400),
       RNG.range(150, 2600),
@@ -1607,7 +1661,7 @@
 
   function regenerate() {
     startAudio();
-    const modePool = getEnabledRandomModes();
+    const randomizeConfig = getRandomizeConfig();
     for (let i = 0; i < state.voiceParams.length; i++) {
       if (!state.activeTracks[i]) continue;
       if (state.frozen[i]) continue;
@@ -1617,7 +1671,7 @@
         stereoWidth: p.stereoWidth ?? 0.5,
         spatialize: p.spatialize ?? 0.5
       };
-      randomizeVoice(p, modePool);
+      randomizeVoice(p, randomizeConfig);
       p.gain = keep.gain;
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;

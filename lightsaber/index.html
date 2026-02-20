@@ -25,9 +25,21 @@
         <div class="randomizeLeft">
           <div class="panelTitle">RAMDOMIZE CONTROLS</div>
           <div class="randomizeModes" id="randomizeModes">
-            <label><input type="checkbox" data-randomize-mode="texture" checked /> Texture</label>
-            <label><input type="checkbox" data-randomize-mode="bass" checked /> Bass</label>
-            <label><input type="checkbox" data-randomize-mode="noise" checked /> Noise</label>
+            <div class="randomizeModeStack">
+              <label class="randomizeModeTitle"><input type="checkbox" data-randomize-mode="texture" checked /> Texture</label>
+              <label><input type="checkbox" data-randomize-behavior="texture:sustain" checked /> Sustain</label>
+              <label><input type="checkbox" data-randomize-behavior="texture:oneshot" checked /> One-shot</label>
+            </div>
+            <div class="randomizeModeStack">
+              <label class="randomizeModeTitle"><input type="checkbox" data-randomize-mode="bass" checked /> Bass</label>
+              <label><input type="checkbox" data-randomize-behavior="bass:sustain" checked /> Sustain</label>
+              <label><input type="checkbox" data-randomize-behavior="bass:oneshot" checked /> One-shot</label>
+            </div>
+            <div class="randomizeModeStack">
+              <label class="randomizeModeTitle"><input type="checkbox" data-randomize-mode="noise" checked /> Noise</label>
+              <label><input type="checkbox" data-randomize-behavior="noise:sustain" checked /> Sustain</label>
+              <label><input type="checkbox" data-randomize-behavior="noise:oneshot" checked /> One-shot</label>
+            </div>
           </div>
         </div>
         <div class="randomizeRight">
