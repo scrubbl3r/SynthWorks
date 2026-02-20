@@ -18,7 +18,7 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const clamp01 = (v) => clamp(v, 0, 1);
   const lerp = (a, b, t) => a + (b - a) * t;
-  //
+  // 
   const PARAMS = [
     { key: "mode", label: "Mode" },
     { key: "textureBehavior", label: "Texture Behavior" },
