@@ -465,6 +465,7 @@ body{
 .paramLockBtn.unlocked{
   background:var(--panel);
   color:var(--ink);
+  box-shadow:none;
 }
 
 .paramLockBtn.locked{
