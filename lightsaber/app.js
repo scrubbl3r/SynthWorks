@@ -891,7 +891,7 @@
       gain.gain.setTargetAtTime(textureGain, t, 0.04);
       texturePostGain.gain.setTargetAtTime(isTexture ? textureVolumeValue : 0, t, 0.04);
       noisePostGain.gain.setTargetAtTime(isNoise ? noiseVolumeValue : 0, t, 0.04);
-      panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
+      panner.pan.setTargetAtTime(clamp(-basePan * width, -1, 1), t, 0.06);
 
       const mainTarget = isBass || isNoise ? 0 : 1;
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
