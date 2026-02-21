@@ -14,8 +14,10 @@
   const noiseEnvLine = document.getElementById("noiseEnvLine");
   const startOverlay = document.getElementById("startOverlay");
   const startBtn = document.getElementById("startBtn");
-  const LOCKED_ICON = "🔒";
-  const UNLOCKED_ICON = "🔓";
+  const LOCKED_ICON_SVG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z"/></svg>';
+  const UNLOCKED_ICON_SVG =
+    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5h2a3 3 0 1 1 6 0v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Z"/></svg>';
 
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const clamp01 = (v) => clamp(v, 0, 1);
@@ -1442,8 +1444,9 @@
     lockBtns.forEach((btn) => {
       const key = btn.dataset.lockParam;
       const locked = !!(state.activeTracks[activeIndex] && state.paramLocks[activeIndex] && state.paramLocks[activeIndex][key]);
-      btn.textContent = locked ? LOCKED_ICON : UNLOCKED_ICON;
+      btn.innerHTML = locked ? LOCKED_ICON_SVG : UNLOCKED_ICON_SVG;
       btn.classList.toggle("locked", locked);
+      btn.classList.toggle("unlocked", !locked);
       btn.setAttribute("aria-label", locked ? `Randomize lock on for ${key}` : `Randomize lock off for ${key}`);
       btn.title = locked ? "Locked: protected from randomize" : "Unlocked: randomizable";
       btn.disabled = !hasActive || !p;
@@ -1715,7 +1718,7 @@
       lockBtn.type = "button";
       lockBtn.className = "paramLockBtn";
       lockBtn.dataset.lockParam = key;
-      lockBtn.textContent = UNLOCKED_ICON;
+      lockBtn.innerHTML = UNLOCKED_ICON_SVG;
       lockBtn.setAttribute("aria-label", `Randomize lock off for ${key}`);
       lockBtn.title = "Unlocked: randomizable";
       meta.appendChild(lockBtn);
