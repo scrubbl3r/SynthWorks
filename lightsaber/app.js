@@ -9,6 +9,7 @@
   const texturePlayBtn = document.getElementById("texturePlayBtn");
   const bassPlayBtn = document.getElementById("bassPlayBtn");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
+  const spatialRerollBtn = document.getElementById("spatialRerollBtn");
   const textureEnvLine = document.getElementById("textureEnvLine");
   const bassEnvLine = document.getElementById("bassEnvLine");
   const noiseEnvLine = document.getElementById("noiseEnvLine");
@@ -654,6 +655,10 @@
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
+    const spatialEntry = ctx.createGain();
+    spatialEntry.gain.value = 1.0;
+    const spatialDry = ctx.createGain();
+    spatialDry.gain.value = 1.0;
     const voiceOut = ctx.createGain();
     voiceOut.gain.value = 0;
     noiseModeGain.connect(noisePostGain);
@@ -663,21 +668,24 @@
     noisePostGain.connect(panner);
 
     const spatialBands = [];
-    const centers = [120, 220, 380, 620, 980, 1600, 2600, 4200];
+    const centers = [80, 120, 180, 260, 380, 560, 820, 1200, 2000, 3800, 6500, 9000];
+    const fcMin = 80;
+    const fcMax = 9000;
     centers.forEach((fc) => {
       const bp = ctx.createBiquadFilter();
       bp.type = "bandpass";
       bp.frequency.value = fc;
-      bp.Q.value = 2.2;
+      const fNorm = clamp((Math.log(fc) - Math.log(fcMin)) / (Math.log(fcMax) - Math.log(fcMin)), 0, 1);
+      bp.Q.value = lerp(1.2, 3.4, fNorm);
       const g = ctx.createGain();
       g.gain.value = 0.0;
       const pan = ctx.createStereoPanner();
       pan.pan.value = 0;
-      filter.connect(bp);
+      spatialEntry.connect(bp);
       bp.connect(g);
       g.connect(pan);
       pan.connect(voiceOut);
-      spatialBands.push({ bp, g, pan, fc, panTarget: 0, gainTarget: 0 });
+      spatialBands.push({ bp, g, pan, fc, panNorm: 0, gainNorm: 0 });
     });
 
     mainGain.connect(filter);
@@ -690,7 +698,9 @@
 
     gain.connect(texturePostGain);
     texturePostGain.connect(panner);
-    panner.connect(voiceOut);
+    panner.connect(spatialEntry);
+    panner.connect(spatialDry);
+    spatialDry.connect(voiceOut);
     voiceOut.connect(master);
 
     const bassDrive = makeDrive(ctx);
@@ -1070,33 +1080,34 @@
       applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
     }
 
-    let lastSpatialize = -1;
+    function rerollSpatialMap() {
+      spatialBands.forEach((b) => {
+        const fNorm = clamp((Math.log(b.fc) - Math.log(fcMin)) / (Math.log(fcMax) - Math.log(fcMin)), 0, 1);
+        const maxPan = lerp(0.35, 1.0, fNorm);
+        b.panNorm = (Math.random() * 2 - 1) * maxPan;
+        b.gainNorm = lerp(0.10, 0.26, Math.random());
+      });
+    }
+    rerollSpatialMap();
+
     function applySpatialization(amount, muted) {
       const t = ctx.currentTime;
       const amt = clamp01(amount);
       if (muted || amt <= 0) {
         spatialBands.forEach((b) => b.g.gain.setTargetAtTime(0, t, 0.06));
-        lastSpatialize = amt;
+        spatialDry.gain.setTargetAtTime(1.0, t, 0.06);
         return;
       }
-
-      if (Math.abs(amt - lastSpatialize) > 0.02) {
-        spatialBands.forEach((b) => {
-          const pan = (Math.random() * 2 - 1) * lerp(0.2, 1.0, amt);
-          const g = lerp(0.02, 0.22, amt) * (0.4 + Math.random() * 0.9);
-          b.panTarget = pan;
-          b.gainTarget = g;
-        });
-        lastSpatialize = amt;
-      }
+      const dryLevel = lerp(1.0, 0.55, amt);
+      spatialDry.gain.setTargetAtTime(dryLevel, t, 0.08);
 
       spatialBands.forEach((b) => {
-        b.g.gain.setTargetAtTime(b.gainTarget, t, 0.08);
-        b.pan.pan.setTargetAtTime(b.panTarget, t, 0.08);
+        b.g.gain.setTargetAtTime(b.gainNorm * amt, t, 0.08);
+        b.pan.pan.setTargetAtTime(b.panNorm * amt, t, 0.08);
       });
     }
 
-    return { apply };
+    return { apply, rerollSpatialMap };
   }
 
   function initVoices() {
@@ -1514,6 +1525,9 @@
       noisePlayBtn.style.display = showPlay ? "inline-flex" : "none";
       noisePlayBtn.disabled = !showPlay || effectiveMuted(activeIndex);
     }
+    if (spatialRerollBtn) {
+      spatialRerollBtn.disabled = !hasActive;
+    }
     applyModeVisibility(p && p.mode ? p.mode : "texture");
   }
 
@@ -1707,6 +1721,18 @@
         applyVoice(i, { forceNoiseTrigger: true });
       });
     }
+
+    if (spatialRerollBtn) {
+      spatialRerollBtn.addEventListener("click", async () => {
+        const i = state.active;
+        if (i == null || !state.activeTracks[i]) return;
+        await startAudio();
+        const voice = state.voices[i];
+        if (!voice || !voice.rerollSpatialMap) return;
+        voice.rerollSpatialMap();
+        applyVoice(i);
+      });
+    }
   }
 
   function applyModeVisibility(mode) {
@@ -1798,6 +1824,9 @@
       };
       randomizeVoice(p, randomizeConfig);
       const locks = state.paramLocks[i] || {};
+      if (!locks.spatialize && state.voices[i] && state.voices[i].rerollSpatialMap) {
+        state.voices[i].rerollSpatialMap();
+      }
       Object.keys(locks).forEach((key) => {
         if (!locks[key]) return;
         if (Object.prototype.hasOwnProperty.call(prev, key)) p[key] = prev[key];

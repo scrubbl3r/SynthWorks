@@ -668,6 +668,24 @@ body{
   box-shadow: inset 0 0 0 var(--stroke) #000;
 }
 
+.spatialInline{
+  justify-content:stretch;
+}
+
+.spatialInline input[type="range"]{
+  flex:1 1 auto;
+}
+
+.spatialInline .miniActionBtn{
+  flex:0 0 110px;
+  width:110px;
+  min-width:110px;
+  margin-left:auto;
+  background:var(--accent);
+  color:var(--panel);
+  box-shadow: inset 0 0 0 var(--stroke) #000;
+}
+
 .miniActionBtn{
   min-width:72px;
   height:32px;

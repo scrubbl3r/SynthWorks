@@ -407,7 +407,10 @@
 
         <label class="row" data-mode="all">
           <span>Freq Spatialize</span>
-          <input type="range" min="0" max="1" step="0.01" data-param="spatialize" />
+          <div class="rowInline spatialInline">
+            <input type="range" min="0" max="1" step="0.01" data-param="spatialize" />
+            <button id="spatialRerollBtn" class="miniActionBtn" type="button">RE-ROLL</button>
+          </div>
           <output data-out="spatialize"></output>
         </label>
 
