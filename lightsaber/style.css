@@ -154,6 +154,16 @@ body{
   color:var(--panel);
 }
 
+#playBtn,
+#playBtn2{
+  overflow:visible;
+}
+
+#playBtn::after,
+#playBtn2::after{
+  inset:calc(var(--stroke) * -1);
+}
+
 .regen.replaySolid::after{
   display:none;
 }
