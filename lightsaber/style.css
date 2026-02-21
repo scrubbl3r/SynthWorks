@@ -469,8 +469,8 @@ body{
 }
 
 .paramLockBtn.locked{
-  background:var(--panel);
-  color:var(--ink);
+  background:var(--accent);
+  color:var(--panel);
 }
 
 .paramLockBtn svg{
