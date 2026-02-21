@@ -807,8 +807,8 @@
       const isNoise = p.mode === "noise";
       const isTexture = !isBass && !isNoise;
       const textureGain = clamp(p.gain, 0, 0.8);
-      const bassGainBoost = 4.0;
-      const bassGainValue = clamp(p.gain * bassGainBoost, 0, 1.6);
+      const bassGainNorm = clamp01((Number(p.gain) || 0) / 0.8);
+      const bassGainValue = Math.pow(bassGainNorm, 1.6) * 3.2;
       const noiseGainValue = clamp(p.gain * 2.0, 0, 1.6);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
