@@ -53,6 +53,7 @@
     { key: "bassLP", label: "Bass LPF" },
     { key: "bassRes", label: "Bass Resonance" },
     { key: "bassDrive", label: "Bass Drive" },
+    { key: "bassBoost", label: "Bass Boost" },
     { key: "bassLfoPitch", label: "Bass Pitch LFO" },
     { key: "bassLfoPitchRate", label: "Bass Pitch LFO Rate" },
     { key: "bassLfoLPF", label: "Bass LPF LFO" },
@@ -168,6 +169,7 @@
       bassLP: Math.round(RNG.range(90, 300)),
       bassRes: +RNG.range(0.4, 3.0).toFixed(1),
       bassDrive: +RNG.range(0.0, 0.6).toFixed(2),
+      bassBoost: +RNG.range(3.0, 8.0).toFixed(1),
       bassLfoPitch: +RNG.range(0.0, 0.6).toFixed(2),
       bassLfoPitchRate: +RNG.range(0.0, 0.6).toFixed(2),
       bassLfoLPF: +RNG.range(0.0, 0.6).toFixed(2),
@@ -291,6 +293,7 @@
     p.bassLP = Math.round(RNG.range(90, 300));
     p.bassRes = +RNG.range(0.4, 3.0).toFixed(1);
     p.bassDrive = +RNG.range(0.0, 0.6).toFixed(2);
+    p.bassBoost = +RNG.range(2.0, 12.0).toFixed(1);
     p.bassLfoPitch = +RNG.range(0.0, 0.6).toFixed(2);
     p.bassLfoPitchRate = +RNG.range(0.0, 0.6).toFixed(2);
     p.bassLfoLPF = +RNG.range(0.0, 0.6).toFixed(2);
@@ -454,6 +457,7 @@
   const state = {
     ctx: null,
     master: null,
+    limiter: null,
     voices: [],
     voiceParams: [],
     paramLocks: [],
@@ -475,11 +479,19 @@
     if (state.ctx) return state.ctx;
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const master = ctx.createGain();
+    const limiter = ctx.createDynamicsCompressor();
     master.gain.value = 0.85;
-    master.connect(ctx.destination);
+    limiter.threshold.value = -3;
+    limiter.knee.value = 12;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.12;
+    master.connect(limiter);
+    limiter.connect(ctx.destination);
 
     state.ctx = ctx;
     state.master = master;
+    state.limiter = limiter;
     state.ready = true;
     initVoices();
     return ctx;
@@ -668,6 +680,8 @@
     bassLP.type = "lowpass";
     bassLP.frequency.value = 140;
     bassLP.Q.value = 0.7;
+    const bassPostGain = ctx.createGain();
+    bassPostGain.gain.value = 1.0;
 
     const bassLfoPitch = ctx.createOscillator();
     bassLfoPitch.type = "sine";
@@ -704,7 +718,8 @@
     bassOsc.type = "sine";
     bassGain.connect(bassDrive.input);
     bassDrive.output.connect(bassLP);
-    bassLP.connect(panner);
+    bassLP.connect(bassPostGain);
+    bassPostGain.connect(panner);
 
     bassLfoPitch.start();
     bassLfoLPF.start();
@@ -808,7 +823,8 @@
       const isTexture = !isBass && !isNoise;
       const textureGain = clamp(p.gain, 0, 0.8);
       const bassGainNorm = clamp01((Number(p.gain) || 0) / 0.8);
-      const bassGainValue = Math.pow(bassGainNorm, 1.6) * 3.2;
+      const bassBoost = clamp(Number(p.bassBoost) || 4.0, 1.0, 12.0);
+      const bassGainValue = Math.pow(bassGainNorm, 1.6) * 1.2;
       const noiseGainValue = clamp(p.gain * 2.0, 0, 1.6);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
@@ -858,6 +874,7 @@
         bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
         bassLP.Q.setTargetAtTime(clamp(p.bassRes, 0.2, 8), t, 0.08);
         bassDrive.setAmount(clamp01(p.bassDrive));
+        bassPostGain.gain.setTargetAtTime(bassBoost, t, 0.08);
 
         const drift = clamp01(p.bassDrift);
         const ratePitch = lerp(0.02, 6.0, clamp01(p.bassLfoPitchRate));
@@ -877,6 +894,7 @@
       } else {
         bassGain.gain.setTargetAtTime(0, t, 0.05);
         bassDrive.setAmount(0);
+        bassPostGain.gain.setTargetAtTime(1.0, t, 0.05);
         bassLfoPitchGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoLPFGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoResGain.gain.setTargetAtTime(0, t, 0.05);
@@ -1080,6 +1098,7 @@
       if (p.bassAms == null) p.bassAms = 260;
       if (p.bassSms == null) p.bassSms = 2100;
       if (p.bassDms == null) p.bassDms = 4600;
+      if (p.bassBoost == null) p.bassBoost = 4.0;
       if (p.noiseAms == null) p.noiseAms = 400;
       if (p.noiseSms == null) p.noiseSms = 1400;
       if (p.noiseDms == null) p.noiseDms = 3200;
@@ -1507,6 +1526,7 @@
     if (key === "bassLP") return `${Math.round(value)} Hz`;
     if (key === "bassRes") return value.toFixed(1);
     if (key === "bassDrive") return value.toFixed(2);
+    if (key === "bassBoost") return `${value.toFixed(1)}x`;
     if (key === "bassLfoPitch") return value.toFixed(2);
     if (key === "bassLfoPitchRate") return value.toFixed(2);
     if (key === "bassLfoLPF") return value.toFixed(2);
