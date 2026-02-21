@@ -203,7 +203,7 @@
       textureVolume: 0.5,
       stereoWidth: 0.5,
       spatialize: 0.5,
-      gain: 0.5
+      gain: 0.15
     };
   };
 
@@ -828,9 +828,9 @@
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
       const isTexture = !isBass && !isNoise;
-      const textureGain = clamp(p.gain, 0, 0.8);
-      const bassGainValue = clamp(p.gain * 2.0, 0, 1.6);
-      const noiseGainValue = clamp(p.gain * 2.0, 0, 1.6);
+      const textureGain = clamp(p.gain, 0, 1.5);
+      const bassGainValue = clamp(p.gain, 0, 1.5);
+      const noiseGainValue = clamp(p.gain, 0, 1.5);
       const textureVolumeValue = clamp(p.textureVolume ?? 0.5, 0, 2);
       const noiseVolumeValue = clamp(p.noiseVolume ?? 0.5, 0, 2);
       const rate = clamp(p.oscRate, 0.5, 2.5);
@@ -1095,7 +1095,7 @@
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
-      if (p.gain == null) p.gain = 0.5;
+      if (p.gain == null) p.gain = 0.15;
       if (p.textureVolume == null) p.textureVolume = 0.5;
       if (p.noiseVolume == null) p.noiseVolume = 0.5;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
@@ -1137,7 +1137,7 @@
 
   function makeDefaultVoice() {
     const p = defaults();
-    p.gain = 0.5;
+    p.gain = 0.15;
     p.textureVolume = 0.5;
     p.noiseVolume = 0.5;
     p.stereoWidth = 0.5;
@@ -1253,7 +1253,7 @@
           state.muted[i] = false;
           state.frozen[i] = false;
           const p = defaults();
-          p.gain = 0.5;
+          p.gain = 0.15;
           p.textureVolume = 0.5;
           p.noiseVolume = 0.5;
           p.stereoWidth = 0.5;
@@ -1777,7 +1777,7 @@
       const p = state.voiceParams[i] || defaults();
       const prev = Object.assign({}, p);
       const keep = {
-        gain: p.gain ?? 0.5,
+        gain: p.gain ?? 0.15,
         textureVolume: p.textureVolume ?? 0.5,
         noiseVolume: p.noiseVolume ?? 0.5,
         stereoWidth: p.stereoWidth ?? 0.5,
@@ -1814,7 +1814,7 @@
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
         const p = defaults();
-        p.gain = 0.5;
+        p.gain = 0.15;
         p.textureVolume = 0.5;
         p.noiseVolume = 0.5;
         p.stereoWidth = 0.5;
