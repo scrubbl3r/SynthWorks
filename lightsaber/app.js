@@ -687,7 +687,7 @@
       bp.connect(g);
       g.connect(pan);
       pan.connect(voiceOut);
-      spatialBands.push({ bp, g, pan, fc, panNorm: 0, gainNorm: 0 });
+      spatialBands.push({ bp, g, pan, fc, idx: spatialBands.length, panNorm: 0, gainNorm: 0 });
     });
 
     mainGain.connect(filter);
@@ -770,6 +770,10 @@
     let bassGateUntil = 0;
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
+    const sustainSpatialPhase = Math.random() * Math.PI * 2;
+    const sustainSpatialRate = lerp(0.045, 0.12, Math.random());
+    const sustainSpatialDepth = lerp(0.55, 1.0, Math.random());
+    const oneShotSpatial = { active: false, t0: 0, dur: 0, dir: 1 };
 
     function noiseTypeProfile(noiseType) {
       if (noiseType === "pink") return { hpMul: 0.55, lpMul: 0.85, resMul: 0.8, edgeAdd: -0.08 };
@@ -786,12 +790,20 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
+    function triggerSpatialOneShot(totalSec, t) {
+      oneShotSpatial.active = true;
+      oneShotSpatial.t0 = t;
+      oneShotSpatial.dur = clamp(totalSec, 0.08, 8.0);
+      oneShotSpatial.dir = Math.random() < 0.5 ? -1 : 1;
+    }
+
     function triggerTextureOneShot(p, t) {
       const ep = effectiveTextureEndpoints(p);
       const a = ep.a / 1000;
       const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
       const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
       applyOneShotEnv(voiceOut, t, a, s, d, 1);
+      triggerSpatialOneShot(ep.d / 1000, t);
       textureGateUntil = t + a + s + d;
       textureOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
     }
@@ -802,6 +814,7 @@
       const s = clamp(ep.s - ep.a, 0, ENV_TOTAL_MS) / 1000;
       const d = clamp(ep.d - ep.s, 0, ENV_TOTAL_MS) / 1000;
       applyOneShotEnv(voiceOut, t, a, s, d, 1);
+      triggerSpatialOneShot(ep.d / 1000, t);
       bassGateUntil = t + a + s + d;
       bassOneShotCooldownUntil = t + (ep.d / 1000) * 0.8 + 0.04;
     }
@@ -840,6 +853,7 @@
       applyOneShotEnv(noiseBoomGain, t, Math.max(0.002, a * 0.35), s, d, peak * clamp01(p.noiseBoomAmt));
       applyOneShotEnv(noiseRingGain, t, Math.max(0.002, a * 0.4), s, d, peak * clamp01(p.noiseRingAmt));
       applyOneShotEnv(noiseCrackleGain, t, 0.001, Math.max(0, s * 0.3), Math.max(0.02, d * 0.55), peak * clamp01(p.noiseCrackleAmt));
+      triggerSpatialOneShot(ep.d / 1000, t);
     }
 
     function apply(p, muted, width, basePan, opts = {}) {
@@ -1079,7 +1093,26 @@
         oneShotCooldownUntil = 0;
       }
 
-      applySpatialization(state.globalSpatialize, muted, clamp(-basePan * width, -1, 1));
+      const isSustainMode = (
+        (isTexture && p.textureBehavior === "sustain") ||
+        (isBass && p.bassBehavior === "sustain") ||
+        (isNoise && p.noiseBehavior === "sustain")
+      ) && !muted;
+      if (oneShotSpatial.active && t >= oneShotSpatial.t0 + oneShotSpatial.dur) {
+        oneShotSpatial.active = false;
+      }
+      const oneShotProgress = oneShotSpatial.active
+        ? clamp01((t - oneShotSpatial.t0) / Math.max(0.001, oneShotSpatial.dur))
+        : -1;
+
+      applySpatialization(
+        state.globalSpatialize,
+        muted,
+        clamp(-basePan * width, -1, 1),
+        isSustainMode,
+        oneShotProgress,
+        oneShotSpatial.dir
+      );
     }
 
     function rerollSpatialMap(profile = null) {
@@ -1100,7 +1133,7 @@
     }
     rerollSpatialMap();
 
-    function applySpatialization(amount, muted, panBias = 0) {
+    function applySpatialization(amount, muted, panBias = 0, sustainOn = false, oneShotProgress = -1, oneShotDir = 1) {
       const t = ctx.currentTime;
       const amt = clamp01(amount);
       if (muted || amt <= 0) {
@@ -1108,12 +1141,36 @@
         spatialDry.gain.setTargetAtTime(1.0, t, 0.06);
         return;
       }
-      const dryLevel = lerp(1.0, 0.35, amt);
+      const hasOneShot = oneShotProgress >= 0;
+      const sustainPhase = t * sustainSpatialRate * Math.PI * 2 + sustainSpatialPhase;
+      const sustainLfoA = Math.sin(sustainPhase);
+      const sustainLfoB = Math.sin(sustainPhase * 0.53 + 1.9);
+      const sustainPanWobble = sustainOn ? sustainLfoA * 0.12 * sustainSpatialDepth : 0;
+      const sustainSpread = sustainOn ? lerp(0.86, 1.08, 0.5 + 0.5 * sustainLfoB) : 1.0;
+      const sustainGainMul = sustainOn ? lerp(0.88, 1.12, 0.5 + 0.5 * Math.sin(sustainPhase * 0.37 + 0.5)) : 1.0;
+
+      let shotSpread = 1.0;
+      let shotPanGlide = 0.0;
+      let shotGainMul = 1.0;
+      if (hasOneShot) {
+        const pTri = oneShotProgress < 0.5 ? oneShotProgress / 0.5 : (1 - oneShotProgress) / 0.5;
+        shotSpread = lerp(0.42, 1.55, clamp01(pTri));
+        shotPanGlide = oneShotDir * lerp(0.30, 0.02, oneShotProgress);
+        shotGainMul = lerp(1.22, 0.72, oneShotProgress);
+      }
+
+      const dryBase = hasOneShot ? lerp(1.0, 0.18, amt) : lerp(1.0, 0.35, amt);
+      const dryLevel = clamp(dryBase * (sustainOn ? 0.92 : 1.0), 0, 1);
       spatialDry.gain.setTargetAtTime(dryLevel, t, 0.08);
 
       spatialBands.forEach((b) => {
-        b.g.gain.setTargetAtTime(b.gainNorm * amt, t, 0.08);
-        b.pan.pan.setTargetAtTime(clamp(b.panNorm * amt + panBias * 0.5, -1, 1), t, 0.08);
+        const bandNorm = b.idx / Math.max(1, spatialBands.length - 1);
+        const bandShape = (bandNorm - 0.5) * 2;
+        const panMotion = (sustainPanWobble + shotPanGlide * bandShape * 0.75) * amt;
+        const pan = clamp(b.panNorm * amt * sustainSpread * shotSpread + panBias * 0.5 + panMotion, -1, 1);
+        const gain = clamp(b.gainNorm * amt * sustainGainMul * shotGainMul, 0, 1.5);
+        b.g.gain.setTargetAtTime(gain, t, 0.08);
+        b.pan.pan.setTargetAtTime(pan, t, 0.08);
       });
     }
 
