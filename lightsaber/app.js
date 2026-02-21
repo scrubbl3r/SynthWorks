@@ -84,6 +84,7 @@
     { key: "noiseCrackleHPF", label: "Noise Crackle HPF" },
     { key: "noiseEdgeDrive", label: "Noise Edge Drive" },
     { key: "noiseVolume", label: "Noise Volume" },
+    { key: "bassVolume", label: "Bass Volume" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
     { key: "textureVolume", label: "Texture Volume" },
@@ -199,8 +200,9 @@
       noiseCrackleAmt: +RNG.range(0.0, 0.45).toFixed(2),
       noiseCrackleHPF: Math.round(RNG.range(900, 3200)),
       noiseEdgeDrive: +RNG.range(0.15, 0.85).toFixed(2),
-      noiseVolume: 0.5,
-      textureVolume: 0.5,
+      noiseVolume: 0.75,
+      textureVolume: 0.75,
+      bassVolume: 0.75,
       stereoWidth: 0.5,
       spatialize: 0.5,
       gain: 0.15
@@ -471,9 +473,18 @@
     soloIndex: null
   };
 
+  const DEFAULT_LOCKED_PARAMS = ["gain", "textureVolume", "noiseVolume", "bassVolume"];
+
   function ensureParamLocks(index) {
     if (!state.paramLocks[index]) state.paramLocks[index] = {};
     return state.paramLocks[index];
+  }
+
+  function applyDefaultParamLocks(index) {
+    const locks = ensureParamLocks(index);
+    DEFAULT_LOCKED_PARAMS.forEach((key) => {
+      if (locks[key] == null) locks[key] = true;
+    });
   }
 
   function ensureAudio() {
@@ -829,10 +840,10 @@
       const isNoise = p.mode === "noise";
       const isTexture = !isBass && !isNoise;
       const textureGain = clamp(p.gain, 0, 1.5);
-      const bassGainValue = clamp(p.gain, 0, 1.5);
+      const bassGainValue = clamp(p.bassVolume ?? 0.75, 0, 1.5);
       const noiseGainValue = clamp(p.gain, 0, 1.5);
-      const textureVolumeValue = clamp(p.textureVolume ?? 0.5, 0, 2);
-      const noiseVolumeValue = clamp(p.noiseVolume ?? 0.5, 0, 2);
+      const textureVolumeValue = clamp(p.textureVolume ?? 0.75, 0, 1.5);
+      const noiseVolumeValue = clamp(p.noiseVolume ?? 0.75, 0, 1.5);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -1096,8 +1107,9 @@
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
       if (p.gain == null) p.gain = 0.15;
-      if (p.textureVolume == null) p.textureVolume = 0.5;
-      if (p.noiseVolume == null) p.noiseVolume = 0.5;
+      if (p.textureVolume == null) p.textureVolume = 0.75;
+      if (p.noiseVolume == null) p.noiseVolume = 0.75;
+      if (p.bassVolume == null) p.bassVolume = 0.75;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
       if (p.spatialize == null) p.spatialize = 0.5;
       if (p.textureBehavior == null) p.textureBehavior = "sustain";
@@ -1130,6 +1142,7 @@
       normalizeBassEnvelope(p);
       normalizeNoiseEnvelope(p);
       state.voiceParams[i] = p;
+      applyDefaultParamLocks(i);
       if (!state.activeTracks[i]) state.muted[i] = true;
       applyVoice(i);
     }
@@ -1138,8 +1151,9 @@
   function makeDefaultVoice() {
     const p = defaults();
     p.gain = 0.15;
-    p.textureVolume = 0.5;
-    p.noiseVolume = 0.5;
+    p.textureVolume = 0.75;
+    p.noiseVolume = 0.75;
+    p.bassVolume = 0.75;
     p.stereoWidth = 0.5;
     p.spatialize = 0.5;
     normalizeTextureEnvelope(p);
@@ -1254,8 +1268,9 @@
           state.frozen[i] = false;
           const p = defaults();
           p.gain = 0.15;
-          p.textureVolume = 0.5;
-          p.noiseVolume = 0.5;
+          p.textureVolume = 0.75;
+          p.noiseVolume = 0.75;
+          p.bassVolume = 0.75;
           p.stereoWidth = 0.5;
           p.spatialize = 0.5;
           normalizeTextureEnvelope(p);
@@ -1263,6 +1278,7 @@
           normalizeNoiseEnvelope(p);
           state.voiceParams[i] = p;
           state.paramLocks[i] = {};
+          applyDefaultParamLocks(i);
           state.active = i;
           if (state.soloIndex != null) {
             state.soloIndex = i;
@@ -1535,6 +1551,7 @@
     if (key === "noiseCrackleHPF") return `${Math.round(value)} Hz`;
     if (key === "noiseEdgeDrive") return value.toFixed(2);
     if (key === "noiseVolume") return value.toFixed(2);
+    if (key === "bassVolume") return value.toFixed(2);
     if (key === "baseHz") return `${Math.round(value)} Hz`;
     if (key === "bassHz") return `${Math.round(value)} Hz`;
     if (key === "bassLP") return `${Math.round(value)} Hz`;
@@ -1698,16 +1715,11 @@
       const m = row.dataset.mode;
       const showByMode = m === "all" || m === mode;
       const hideInNoise = row.dataset.hideNoise === "1" && mode === "noise";
-      const show = showByMode && !hideInNoise;
+      const hideInBass = row.dataset.hideBass === "1" && mode === "bass";
+      const show = showByMode && !hideInNoise && !hideInBass;
       row.style.display = show ? "" : "none";
     });
     const p = state.voiceParams[state.active] || {};
-    const gainInput = controls.querySelector("[data-param='gain']");
-    const gainRow = gainInput && gainInput.closest ? gainInput.closest(".row") : null;
-    if (gainRow) {
-      const label = gainRow.querySelector("span");
-      if (label) label.textContent = mode === "bass" ? "Volume" : "Gain";
-    }
     const textureOneShotRows = controls.querySelectorAll("[data-texture-oneshot]");
     textureOneShotRows.forEach((row) => {
       if (mode !== "texture") return;
@@ -1778,8 +1790,9 @@
       const prev = Object.assign({}, p);
       const keep = {
         gain: p.gain ?? 0.15,
-        textureVolume: p.textureVolume ?? 0.5,
-        noiseVolume: p.noiseVolume ?? 0.5,
+        textureVolume: p.textureVolume ?? 0.75,
+        noiseVolume: p.noiseVolume ?? 0.75,
+        bassVolume: p.bassVolume ?? 0.75,
         stereoWidth: p.stereoWidth ?? 0.5,
         spatialize: p.spatialize ?? 0.5
       };
@@ -1792,6 +1805,7 @@
       p.gain = keep.gain;
       p.textureVolume = keep.textureVolume;
       p.noiseVolume = keep.noiseVolume;
+      p.bassVolume = keep.bassVolume;
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
@@ -1815,8 +1829,9 @@
       for (let i = 0; i < 5; i++) {
         const p = defaults();
         p.gain = 0.15;
-        p.textureVolume = 0.5;
-        p.noiseVolume = 0.5;
+        p.textureVolume = 0.75;
+        p.noiseVolume = 0.75;
+        p.bassVolume = 0.75;
         p.stereoWidth = 0.5;
         p.spatialize = 0.5;
         normalizeTextureEnvelope(p);
@@ -1824,6 +1839,7 @@
         normalizeNoiseEnvelope(p);
         state.voiceParams[i] = p;
         ensureParamLocks(i);
+        applyDefaultParamLocks(i);
       }
     }
     renderVoices();
