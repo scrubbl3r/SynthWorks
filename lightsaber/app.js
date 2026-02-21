@@ -10,6 +10,8 @@
   const bassPlayBtn = document.getElementById("bassPlayBtn");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
   const spatialRerollBtn = document.getElementById("spatialRerollBtn");
+  const globalSpatialize = document.getElementById("globalSpatialize");
+  const globalSpatializeOut = document.getElementById("globalSpatializeOut");
   const textureEnvLine = document.getElementById("textureEnvLine");
   const bassEnvLine = document.getElementById("bassEnvLine");
   const noiseEnvLine = document.getElementById("noiseEnvLine");
@@ -87,10 +89,13 @@
     { key: "noiseVolume", label: "Noise Volume" },
     { key: "bassVolume", label: "Bass Volume" },
     { key: "stereoWidth", label: "Stereo Width" },
-    { key: "spatialize", label: "Freq Spatialize" },
     { key: "textureVolume", label: "Texture Volume" },
     { key: "gain", label: "Voice Gain" }
   ];
+
+  const SPATIAL_CENTERS = [80, 120, 180, 260, 380, 560, 820, 1200, 2000, 3800, 6500, 9000];
+  const SPATIAL_MIN = 80;
+  const SPATIAL_MAX = 9000;
 
   const RNG = {
     seed: Math.floor(Math.random() * 1e9),
@@ -205,7 +210,6 @@
       textureVolume: 0.75,
       bassVolume: 0.75,
       stereoWidth: 0.5,
-      spatialize: 0.5,
       gain: 0.15
     };
   };
@@ -471,7 +475,8 @@
     active: 0,
     ready: false,
     playing: true,
-    soloIndex: null
+    soloIndex: null,
+    globalSpatialize: 0.5
   };
 
   const DEFAULT_LOCKED_PARAMS = ["gain", "textureVolume", "noiseVolume", "bassVolume"];
@@ -668,14 +673,11 @@
     noisePostGain.connect(panner);
 
     const spatialBands = [];
-    const centers = [80, 120, 180, 260, 380, 560, 820, 1200, 2000, 3800, 6500, 9000];
-    const fcMin = 80;
-    const fcMax = 9000;
-    centers.forEach((fc) => {
+    SPATIAL_CENTERS.forEach((fc) => {
       const bp = ctx.createBiquadFilter();
       bp.type = "bandpass";
       bp.frequency.value = fc;
-      const fNorm = clamp((Math.log(fc) - Math.log(fcMin)) / (Math.log(fcMax) - Math.log(fcMin)), 0, 1);
+      const fNorm = clamp((Math.log(fc) - Math.log(SPATIAL_MIN)) / (Math.log(SPATIAL_MAX) - Math.log(SPATIAL_MIN)), 0, 1);
       bp.Q.value = lerp(1.2, 3.4, fNorm);
       const g = ctx.createGain();
       g.gain.value = 0.0;
@@ -1077,12 +1079,20 @@
         oneShotCooldownUntil = 0;
       }
 
-      applySpatialization(isBass ? p.spatialize : p.spatialize, muted);
+      applySpatialization(state.globalSpatialize, muted);
     }
 
-    function rerollSpatialMap() {
+    function rerollSpatialMap(profile = null) {
+      if (Array.isArray(profile) && profile.length === spatialBands.length) {
+        spatialBands.forEach((b, i) => {
+          const src = profile[i];
+          b.panNorm = clamp(src.panNorm, -1, 1);
+          b.gainNorm = clamp(src.gainNorm, 0, 1);
+        });
+        return;
+      }
       spatialBands.forEach((b) => {
-        const fNorm = clamp((Math.log(b.fc) - Math.log(fcMin)) / (Math.log(fcMax) - Math.log(fcMin)), 0, 1);
+        const fNorm = clamp((Math.log(b.fc) - Math.log(SPATIAL_MIN)) / (Math.log(SPATIAL_MAX) - Math.log(SPATIAL_MIN)), 0, 1);
         const maxPan = lerp(0.35, 1.0, fNorm);
         b.panNorm = (Math.random() * 2 - 1) * maxPan;
         b.gainNorm = lerp(0.14, 0.34, Math.random());
@@ -1122,7 +1132,6 @@
       if (p.noiseVolume == null) p.noiseVolume = 0.75;
       if (p.bassVolume == null) p.bassVolume = 0.75;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
-      if (p.spatialize == null) p.spatialize = 0.5;
       if (p.textureBehavior == null) p.textureBehavior = "sustain";
       if (p.textureAms == null) p.textureAms = 240;
       if (p.textureSms == null) p.textureSms = 1900;
@@ -1157,6 +1166,7 @@
       if (!state.activeTracks[i]) state.muted[i] = true;
       applyVoice(i);
     }
+    rerollGlobalSpatialization();
   }
 
   function makeDefaultVoice() {
@@ -1166,7 +1176,6 @@
     p.noiseVolume = 0.75;
     p.bassVolume = 0.75;
     p.stereoWidth = 0.5;
-    p.spatialize = 0.5;
     normalizeTextureEnvelope(p);
     normalizeBassEnvelope(p);
     normalizeNoiseEnvelope(p);
@@ -1243,6 +1252,23 @@
     for (let i = 0; i < state.voices.length; i++) applyVoice(i);
   }
 
+  function rerollGlobalSpatialization() {
+    const profile = SPATIAL_CENTERS.map((fc) => {
+      const fNorm = clamp((Math.log(fc) - Math.log(SPATIAL_MIN)) / (Math.log(SPATIAL_MAX) - Math.log(SPATIAL_MIN)), 0, 1);
+      return {
+        panNorm: (Math.random() * 2 - 1) * lerp(0.35, 1.0, fNorm),
+        gainNorm: lerp(0.14, 0.34, Math.random()),
+      };
+    });
+    for (let i = 0; i < state.voices.length; i++) {
+      if (!state.activeTracks[i]) continue;
+      const voice = state.voices[i];
+      if (!voice || !voice.rerollSpatialMap) continue;
+      voice.rerollSpatialMap(profile);
+    }
+    applyAllVoices();
+  }
+
   function makePWMWave(ctx, duty) {
     const n = 64;
     const real = new Float32Array(n);
@@ -1283,7 +1309,6 @@
           p.noiseVolume = 0.75;
           p.bassVolume = 0.75;
           p.stereoWidth = 0.5;
-          p.spatialize = 0.5;
           normalizeTextureEnvelope(p);
           normalizeBassEnvelope(p);
           normalizeNoiseEnvelope(p);
@@ -1446,6 +1471,8 @@
     const activeIndex = state.active;
     const hasActive = state.activeTracks[activeIndex];
     const p = state.voiceParams[activeIndex];
+    if (globalSpatialize) globalSpatialize.value = String(clamp01(state.globalSpatialize));
+    if (globalSpatializeOut) globalSpatializeOut.textContent = clamp01(state.globalSpatialize).toFixed(2);
     activeLabel.textContent = hasActive ? `Editing: Voice ${activeIndex + 1}` : "Editing: —";
     const inputs = controls.querySelectorAll("[data-param]");
     inputs.forEach((input) => {
@@ -1525,9 +1552,7 @@
       noisePlayBtn.style.display = showPlay ? "inline-flex" : "none";
       noisePlayBtn.disabled = !showPlay || effectiveMuted(activeIndex);
     }
-    if (spatialRerollBtn) {
-      spatialRerollBtn.disabled = !hasActive;
-    }
+    if (spatialRerollBtn) spatialRerollBtn.disabled = !state.activeTracks.some(Boolean);
     applyModeVisibility(p && p.mode ? p.mode : "texture");
   }
 
@@ -1590,7 +1615,6 @@
     if (key === "unisonSpread") return value.toFixed(4);
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
-    if (key === "spatialize") return value.toFixed(2);
     if (key === "textureVolume") return value.toFixed(2);
     if (key === "oscType") return value;
     return Number(value).toFixed(2);
@@ -1722,16 +1746,21 @@
       });
     }
 
+    if (globalSpatialize) {
+      const onGlobalSpatial = async () => {
+        await startAudio();
+        state.globalSpatialize = clamp01(parseFloat(globalSpatialize.value) || 0);
+        if (globalSpatializeOut) globalSpatializeOut.textContent = state.globalSpatialize.toFixed(2);
+        applyAllVoices();
+      };
+      globalSpatialize.addEventListener("input", onGlobalSpatial);
+      globalSpatialize.addEventListener("change", onGlobalSpatial);
+    }
+
     if (spatialRerollBtn) {
       spatialRerollBtn.addEventListener("click", async () => {
         await startAudio();
-        for (let i = 0; i < state.voices.length; i++) {
-          if (!state.activeTracks[i]) continue;
-          const voice = state.voices[i];
-          if (!voice || !voice.rerollSpatialMap) continue;
-          voice.rerollSpatialMap();
-        }
-        applyAllVoices();
+        rerollGlobalSpatialization();
       });
     }
   }
@@ -1820,14 +1849,10 @@
         textureVolume: p.textureVolume ?? 0.75,
         noiseVolume: p.noiseVolume ?? 0.75,
         bassVolume: p.bassVolume ?? 0.75,
-        stereoWidth: p.stereoWidth ?? 0.5,
-        spatialize: p.spatialize ?? 0.5
+        stereoWidth: p.stereoWidth ?? 0.5
       };
       randomizeVoice(p, randomizeConfig);
       const locks = state.paramLocks[i] || {};
-      if (!locks.spatialize && state.voices[i] && state.voices[i].rerollSpatialMap) {
-        state.voices[i].rerollSpatialMap();
-      }
       Object.keys(locks).forEach((key) => {
         if (!locks[key]) return;
         if (Object.prototype.hasOwnProperty.call(prev, key)) p[key] = prev[key];
@@ -1837,9 +1862,9 @@
       p.noiseVolume = keep.noiseVolume;
       p.bassVolume = keep.bassVolume;
       p.stereoWidth = keep.stereoWidth;
-      p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
     }
+    rerollGlobalSpatialization();
     renderVoices();
     syncControls();
     await replayAllVoices();
@@ -1855,6 +1880,10 @@
   }
 
   function init() {
+    if (globalSpatialize) {
+      state.globalSpatialize = clamp01(parseFloat(globalSpatialize.value) || 0.5);
+      if (globalSpatializeOut) globalSpatializeOut.textContent = state.globalSpatialize.toFixed(2);
+    }
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
         const p = defaults();
@@ -1863,7 +1892,6 @@
         p.noiseVolume = 0.75;
         p.bassVolume = 0.75;
         p.stereoWidth = 0.5;
-        p.spatialize = 0.5;
         normalizeTextureEnvelope(p);
         normalizeBassEnvelope(p);
         normalizeNoiseEnvelope(p);

@@ -48,6 +48,17 @@
       </div>
     </section>
 
+    <section class="panel globalSpatialCard" aria-label="Global spatialize controls">
+      <div class="globalSpatialRow">
+        <div class="globalSpatialLabel">Global Spatialize</div>
+        <div class="globalSpatialControl">
+          <input id="globalSpatialize" type="range" min="0" max="1" step="0.01" value="0.5" />
+          <output id="globalSpatializeOut">0.50</output>
+        </div>
+        <button id="spatialRerollBtn" class="regen globalSpatialReroll" type="button">RE-ROLL</button>
+      </div>
+    </section>
+
     <section class="voiceStrip" aria-label="Lightsaber voice stack">
       <div class="voiceGrid" id="voiceGrid"></div>
     </section>
@@ -403,15 +414,6 @@
           <span>Stereo L/R</span>
           <input type="range" min="0" max="1" step="0.01" data-param="stereoWidth" />
           <output data-out="stereoWidth"></output>
-        </label>
-
-        <label class="row" data-mode="all">
-          <span>Freq Spatialize</span>
-          <div class="rowInline spatialInline">
-            <input type="range" min="0" max="1" step="0.01" data-param="spatialize" />
-            <button id="spatialRerollBtn" class="miniActionBtn" type="button">RE-ROLL</button>
-          </div>
-          <output data-out="spatialize"></output>
         </label>
 
         <label class="row" data-mode="all" data-hide-bass="1">
