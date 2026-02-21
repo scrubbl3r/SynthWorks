@@ -462,6 +462,11 @@ body{
   line-height:1;
 }
 
+.paramLockBtn.unlocked{
+  background:var(--accent);
+  color:var(--panel);
+}
+
 .paramLockBtn.locked{
   background:var(--panel);
   color:var(--ink);
