@@ -382,6 +382,7 @@ body{
   display:flex;
   align-items:center;
   gap:8px;
+  font-size:1em;
 }
 
 .randomizeModeStack > label:not(.randomizeModeTitle){
@@ -391,10 +392,10 @@ body{
 .randomizeModes input[type="checkbox"]{
   -webkit-appearance:none;
   appearance:none;
-  width:22px;
-  height:22px;
+  width:1.35em;
+  height:1.35em;
   margin:0;
-  border:2px solid var(--ink);
+  border:1px solid var(--ink);
   background:transparent;
   display:grid;
   place-content:center;
@@ -403,10 +404,10 @@ body{
 
 .randomizeModes input[type="checkbox"]::before{
   content:"";
-  width:11px;
-  height:7px;
-  border-right:2px solid var(--ink);
-  border-bottom:2px solid var(--ink);
+  width:0.55em;
+  height:0.36em;
+  border-right:1px solid #b2fd00;
+  border-bottom:1px solid #b2fd00;
   transform:rotate(45deg) scale(0);
   transform-origin:center;
   transition:transform 90ms ease-out;
