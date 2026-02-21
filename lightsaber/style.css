@@ -107,6 +107,14 @@ body{
   gap:0;
 }
 
+#playBtn,
+#playBtn2{
+  width:50%;
+  min-width:0;
+  max-width:none;
+  flex:1 1 50%;
+}
+
 .regen{
   width:var(--action-size);
   min-width:var(--action-size);
@@ -440,7 +448,7 @@ body{
 
 .randomizeRow{
   display:grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: 4fr 1fr;
   align-items:stretch;
   gap:0;
   min-height:var(--action-size);
@@ -462,9 +470,9 @@ body{
 }
 
 .randomizeAction{
-  width:var(--action-size);
-  min-width:var(--action-size);
-  max-width:var(--action-size);
+  width:100%;
+  min-width:0;
+  max-width:none;
   height:100%;
   flex:0 0 auto;
   border-left:0;
