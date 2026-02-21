@@ -83,8 +83,10 @@
     { key: "noiseCrackleAmt", label: "Noise Crackle Amt" },
     { key: "noiseCrackleHPF", label: "Noise Crackle HPF" },
     { key: "noiseEdgeDrive", label: "Noise Edge Drive" },
+    { key: "noiseVolume", label: "Noise Volume" },
     { key: "stereoWidth", label: "Stereo Width" },
     { key: "spatialize", label: "Freq Spatialize" },
+    { key: "textureVolume", label: "Texture Volume" },
     { key: "gain", label: "Voice Gain" }
   ];
 
@@ -197,6 +199,8 @@
       noiseCrackleAmt: +RNG.range(0.0, 0.45).toFixed(2),
       noiseCrackleHPF: Math.round(RNG.range(900, 3200)),
       noiseEdgeDrive: +RNG.range(0.15, 0.85).toFixed(2),
+      noiseVolume: 0.5,
+      textureVolume: 0.5,
       stereoWidth: 0.5,
       spatialize: 0.5,
       gain: 0.5
@@ -632,15 +636,20 @@
 
     const gain = ctx.createGain();
     gain.gain.value = 0.5;
+    const texturePostGain = ctx.createGain();
+    texturePostGain.gain.value = 1.0;
+    const noisePostGain = ctx.createGain();
+    noisePostGain.gain.value = 1.0;
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
     const voiceOut = ctx.createGain();
     voiceOut.gain.value = 0;
-    noiseModeGain.connect(panner);
-    noiseCrackleGain.connect(panner);
-    noiseBoomGain.connect(panner);
-    noiseRingGain.connect(panner);
+    noiseModeGain.connect(noisePostGain);
+    noiseCrackleGain.connect(noisePostGain);
+    noiseBoomGain.connect(noisePostGain);
+    noiseRingGain.connect(noisePostGain);
+    noisePostGain.connect(panner);
 
     const spatialBands = [];
     const centers = [120, 220, 380, 620, 980, 1600, 2600, 4200];
@@ -668,7 +677,8 @@
     edgeBP.connect(edgeGain);
     edgeGain.connect(drive.input);
 
-    gain.connect(panner);
+    gain.connect(texturePostGain);
+    texturePostGain.connect(panner);
     panner.connect(voiceOut);
     voiceOut.connect(master);
 
@@ -821,6 +831,8 @@
       const textureGain = clamp(p.gain, 0, 0.8);
       const bassGainValue = clamp(p.gain * 2.0, 0, 1.6);
       const noiseGainValue = clamp(p.gain * 2.0, 0, 1.6);
+      const textureVolumeValue = clamp(p.textureVolume ?? 0.5, 0, 2);
+      const noiseVolumeValue = clamp(p.noiseVolume ?? 0.5, 0, 2);
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -856,6 +868,8 @@
 
       drive.setAmount(p.drive);
       gain.gain.setTargetAtTime(textureGain, t, 0.04);
+      texturePostGain.gain.setTargetAtTime(isTexture ? textureVolumeValue : 0, t, 0.04);
+      noisePostGain.gain.setTargetAtTime(isNoise ? noiseVolumeValue : 0, t, 0.04);
       panner.pan.setTargetAtTime(clamp(basePan * width, -1, 1), t, 0.06);
 
       const mainTarget = isBass || isNoise ? 0 : 1;
@@ -1082,6 +1096,8 @@
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
       if (p.gain == null) p.gain = 0.5;
+      if (p.textureVolume == null) p.textureVolume = 0.5;
+      if (p.noiseVolume == null) p.noiseVolume = 0.5;
       if (p.stereoWidth == null) p.stereoWidth = 0.5;
       if (p.spatialize == null) p.spatialize = 0.5;
       if (p.textureBehavior == null) p.textureBehavior = "sustain";
@@ -1122,6 +1138,8 @@
   function makeDefaultVoice() {
     const p = defaults();
     p.gain = 0.5;
+    p.textureVolume = 0.5;
+    p.noiseVolume = 0.5;
     p.stereoWidth = 0.5;
     p.spatialize = 0.5;
     normalizeTextureEnvelope(p);
@@ -1236,6 +1254,8 @@
           state.frozen[i] = false;
           const p = defaults();
           p.gain = 0.5;
+          p.textureVolume = 0.5;
+          p.noiseVolume = 0.5;
           p.stereoWidth = 0.5;
           p.spatialize = 0.5;
           normalizeTextureEnvelope(p);
@@ -1514,6 +1534,7 @@
     if (key === "noiseCrackleAmt") return value.toFixed(2);
     if (key === "noiseCrackleHPF") return `${Math.round(value)} Hz`;
     if (key === "noiseEdgeDrive") return value.toFixed(2);
+    if (key === "noiseVolume") return value.toFixed(2);
     if (key === "baseHz") return `${Math.round(value)} Hz`;
     if (key === "bassHz") return `${Math.round(value)} Hz`;
     if (key === "bassLP") return `${Math.round(value)} Hz`;
@@ -1539,6 +1560,7 @@
     if (key === "edge") return value.toFixed(2);
     if (key === "stereoWidth") return value.toFixed(2);
     if (key === "spatialize") return value.toFixed(2);
+    if (key === "textureVolume") return value.toFixed(2);
     if (key === "oscType") return value;
     return Number(value).toFixed(2);
   }
@@ -1756,6 +1778,8 @@
       const prev = Object.assign({}, p);
       const keep = {
         gain: p.gain ?? 0.5,
+        textureVolume: p.textureVolume ?? 0.5,
+        noiseVolume: p.noiseVolume ?? 0.5,
         stereoWidth: p.stereoWidth ?? 0.5,
         spatialize: p.spatialize ?? 0.5
       };
@@ -1766,6 +1790,8 @@
         if (Object.prototype.hasOwnProperty.call(prev, key)) p[key] = prev[key];
       });
       p.gain = keep.gain;
+      p.textureVolume = keep.textureVolume;
+      p.noiseVolume = keep.noiseVolume;
       p.stereoWidth = keep.stereoWidth;
       p.spatialize = keep.spatialize;
       state.voiceParams[i] = p;
@@ -1789,6 +1815,8 @@
       for (let i = 0; i < 5; i++) {
         const p = defaults();
         p.gain = 0.5;
+        p.textureVolume = 0.5;
+        p.noiseVolume = 0.5;
         p.stereoWidth = 0.5;
         p.spatialize = 0.5;
         normalizeTextureEnvelope(p);
