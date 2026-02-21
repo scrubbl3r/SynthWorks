@@ -862,14 +862,13 @@
       mainGain.gain.setTargetAtTime(mainTarget, t, 0.05);
 
       if (isBass) {
-        const bassTarget = bassGainValue;
-        bassGain.gain.setTargetAtTime(bassTarget, t, 0.08);
+        bassGain.gain.setTargetAtTime(1.0, t, 0.08);
 
         bassOsc.frequency.setTargetAtTime(clamp(p.bassHz, 30, 160), t, 0.08);
         bassLP.frequency.setTargetAtTime(clamp(p.bassLP, 60, 800), t, 0.08);
         bassLP.Q.setTargetAtTime(clamp(p.bassRes, 0.2, 8), t, 0.08);
         bassDrive.setAmount(clamp01(p.bassDrive));
-        bassPostGain.gain.setTargetAtTime(1.0, t, 0.08);
+        bassPostGain.gain.setTargetAtTime(bassGainValue, t, 0.08);
 
         const drift = clamp01(p.bassDrift);
         const ratePitch = lerp(0.02, 6.0, clamp01(p.bassLfoPitchRate));
@@ -889,7 +888,7 @@
       } else {
         bassGain.gain.setTargetAtTime(0, t, 0.05);
         bassDrive.setAmount(0);
-        bassPostGain.gain.setTargetAtTime(1.0, t, 0.05);
+        bassPostGain.gain.setTargetAtTime(0.0, t, 0.05);
         bassLfoPitchGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoLPFGain.gain.setTargetAtTime(0, t, 0.05);
         bassLfoResGain.gain.setTargetAtTime(0, t, 0.05);
@@ -1681,6 +1680,12 @@
       row.style.display = show ? "" : "none";
     });
     const p = state.voiceParams[state.active] || {};
+    const gainInput = controls.querySelector("[data-param='gain']");
+    const gainRow = gainInput && gainInput.closest ? gainInput.closest(".row") : null;
+    if (gainRow) {
+      const label = gainRow.querySelector("span");
+      if (label) label.textContent = mode === "bass" ? "Volume" : "Gain";
+    }
     const textureOneShotRows = controls.querySelectorAll("[data-texture-oneshot]");
     textureOneShotRows.forEach((row) => {
       if (mode !== "texture") return;
