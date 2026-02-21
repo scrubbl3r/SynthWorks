@@ -363,9 +363,9 @@ body{
   display:grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items:stretch;
-  gap:10px;
+  gap:12px;
   width:100%;
-  font-size:12px;
+  font-size:16px;
   text-transform:uppercase;
   letter-spacing:0.7px;
 }
@@ -375,7 +375,7 @@ body{
   flex-direction:column;
   align-items:flex-start;
   justify-content:flex-start;
-  gap:6px;
+  gap:8px;
 }
 
 .randomizeModes label{
@@ -387,8 +387,8 @@ body{
 .randomizeModes input[type="checkbox"]{
   -webkit-appearance:none;
   appearance:none;
-  width:16px;
-  height:16px;
+  width:22px;
+  height:22px;
   margin:0;
   border:2px solid var(--ink);
   background:transparent;
@@ -399,8 +399,8 @@ body{
 
 .randomizeModes input[type="checkbox"]::before{
   content:"";
-  width:8px;
-  height:5px;
+  width:11px;
+  height:7px;
   border-right:2px solid var(--ink);
   border-bottom:2px solid var(--ink);
   transform:rotate(45deg) scale(0);
@@ -424,6 +424,11 @@ body{
 .randomizeModeTitle{
   font-weight:900;
   letter-spacing:0.9px;
+  font-size:16.5px;
+}
+
+.randomizeLeft .panelTitle{
+  font-size:21px;
 }
 
 .randomizeRow{
