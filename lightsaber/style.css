@@ -384,6 +384,10 @@ body{
   gap:8px;
 }
 
+.randomizeModeStack > label:not(.randomizeModeTitle){
+  font-size:70%;
+}
+
 .randomizeModes input[type="checkbox"]{
   -webkit-appearance:none;
   appearance:none;
