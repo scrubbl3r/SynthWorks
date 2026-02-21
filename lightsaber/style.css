@@ -463,8 +463,8 @@ body{
 }
 
 .paramLockBtn.unlocked{
-  background:var(--accent);
-  color:var(--panel);
+  background:var(--panel);
+  color:var(--ink);
 }
 
 .paramLockBtn.locked{
