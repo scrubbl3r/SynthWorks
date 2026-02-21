@@ -626,10 +626,13 @@ body{
 }
 
 .behaviorInline .miniActionBtn{
-  flex:0 0 20%;
-  width:20%;
-  min-width:0;
+  flex:0 0 var(--action-size);
+  width:var(--action-size);
+  min-width:var(--action-size);
   margin-left:auto;
+  background:var(--accent);
+  color:var(--panel);
+  box-shadow: inset 0 0 0 var(--stroke) #000;
 }
 
 .miniActionBtn{
