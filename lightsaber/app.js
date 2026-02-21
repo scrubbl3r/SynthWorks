@@ -1079,7 +1079,7 @@
         oneShotCooldownUntil = 0;
       }
 
-      applySpatialization(state.globalSpatialize, muted);
+      applySpatialization(state.globalSpatialize, muted, clamp(-basePan * width, -1, 1));
     }
 
     function rerollSpatialMap(profile = null) {
@@ -1100,7 +1100,7 @@
     }
     rerollSpatialMap();
 
-    function applySpatialization(amount, muted) {
+    function applySpatialization(amount, muted, panBias = 0) {
       const t = ctx.currentTime;
       const amt = clamp01(amount);
       if (muted || amt <= 0) {
@@ -1113,7 +1113,7 @@
 
       spatialBands.forEach((b) => {
         b.g.gain.setTargetAtTime(b.gainNorm * amt, t, 0.08);
-        b.pan.pan.setTargetAtTime(b.panNorm * amt, t, 0.08);
+        b.pan.pan.setTargetAtTime(clamp(b.panNorm * amt + panBias * 0.5, -1, 1), t, 0.08);
       });
     }
 
