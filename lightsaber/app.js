@@ -1085,7 +1085,7 @@
         const fNorm = clamp((Math.log(b.fc) - Math.log(fcMin)) / (Math.log(fcMax) - Math.log(fcMin)), 0, 1);
         const maxPan = lerp(0.35, 1.0, fNorm);
         b.panNorm = (Math.random() * 2 - 1) * maxPan;
-        b.gainNorm = lerp(0.10, 0.26, Math.random());
+        b.gainNorm = lerp(0.14, 0.34, Math.random());
       });
     }
     rerollSpatialMap();
@@ -1098,7 +1098,7 @@
         spatialDry.gain.setTargetAtTime(1.0, t, 0.06);
         return;
       }
-      const dryLevel = lerp(1.0, 0.55, amt);
+      const dryLevel = lerp(1.0, 0.35, amt);
       spatialDry.gain.setTargetAtTime(dryLevel, t, 0.08);
 
       spatialBands.forEach((b) => {
@@ -1724,13 +1724,14 @@
 
     if (spatialRerollBtn) {
       spatialRerollBtn.addEventListener("click", async () => {
-        const i = state.active;
-        if (i == null || !state.activeTracks[i]) return;
         await startAudio();
-        const voice = state.voices[i];
-        if (!voice || !voice.rerollSpatialMap) return;
-        voice.rerollSpatialMap();
-        applyVoice(i);
+        for (let i = 0; i < state.voices.length; i++) {
+          if (!state.activeTracks[i]) continue;
+          const voice = state.voices[i];
+          if (!voice || !voice.rerollSpatialMap) continue;
+          voice.rerollSpatialMap();
+        }
+        applyAllVoices();
       });
     }
   }
