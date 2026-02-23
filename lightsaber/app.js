@@ -9,9 +9,6 @@
   const texturePlayBtn = document.getElementById("texturePlayBtn");
   const bassPlayBtn = document.getElementById("bassPlayBtn");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
-  const spatialRerollBtn = document.getElementById("spatialRerollBtn");
-  const globalSpatialize = document.getElementById("globalSpatialize");
-  const globalSpatializeOut = document.getElementById("globalSpatializeOut");
   const textureEnvLine = document.getElementById("textureEnvLine");
   const bassEnvLine = document.getElementById("bassEnvLine");
   const noiseEnvLine = document.getElementById("noiseEnvLine");
@@ -476,7 +473,7 @@
     ready: false,
     playing: true,
     soloIndex: null,
-    globalSpatialize: 0.5
+    globalSpatialize: 1.0
   };
 
   const DEFAULT_LOCKED_PARAMS = ["gain", "textureVolume", "noiseVolume", "bassVolume"];
@@ -1528,8 +1525,6 @@
     const activeIndex = state.active;
     const hasActive = state.activeTracks[activeIndex];
     const p = state.voiceParams[activeIndex];
-    if (globalSpatialize) globalSpatialize.value = String(clamp01(state.globalSpatialize));
-    if (globalSpatializeOut) globalSpatializeOut.textContent = clamp01(state.globalSpatialize).toFixed(2);
     activeLabel.textContent = hasActive ? `Editing: Voice ${activeIndex + 1}` : "Editing: —";
     const inputs = controls.querySelectorAll("[data-param]");
     inputs.forEach((input) => {
@@ -1609,7 +1604,6 @@
       noisePlayBtn.style.display = showPlay ? "inline-flex" : "none";
       noisePlayBtn.disabled = !showPlay || effectiveMuted(activeIndex);
     }
-    if (spatialRerollBtn) spatialRerollBtn.disabled = !state.activeTracks.some(Boolean);
     applyModeVisibility(p && p.mode ? p.mode : "texture");
   }
 
@@ -1803,23 +1797,6 @@
       });
     }
 
-    if (globalSpatialize) {
-      const onGlobalSpatial = async () => {
-        await startAudio();
-        state.globalSpatialize = clamp01(parseFloat(globalSpatialize.value) || 0);
-        if (globalSpatializeOut) globalSpatializeOut.textContent = state.globalSpatialize.toFixed(2);
-        applyAllVoices();
-      };
-      globalSpatialize.addEventListener("input", onGlobalSpatial);
-      globalSpatialize.addEventListener("change", onGlobalSpatial);
-    }
-
-    if (spatialRerollBtn) {
-      spatialRerollBtn.addEventListener("click", async () => {
-        await startAudio();
-        rerollGlobalSpatialization();
-      });
-    }
   }
 
   function applyModeVisibility(mode) {
@@ -1937,10 +1914,7 @@
   }
 
   function init() {
-    if (globalSpatialize) {
-      state.globalSpatialize = clamp01(parseFloat(globalSpatialize.value) || 0.5);
-      if (globalSpatializeOut) globalSpatializeOut.textContent = state.globalSpatialize.toFixed(2);
-    }
+    state.globalSpatialize = 1.0;
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
         const p = defaults();
