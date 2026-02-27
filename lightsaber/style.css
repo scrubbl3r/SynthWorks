@@ -8,7 +8,9 @@
   --accent-ink:#140100;
   --muted:rgba(255,59,24,0.65);
   --action-size:160px;
-  --top-action-h:56px;
+  --zone-title-size:40.95px;
+  --zone-vpad:10px;
+  --top-action-h:calc(var(--zone-title-size) + (var(--zone-vpad) * 2));
   --card-gap:12px;
   --card-inset:12px;
 }
@@ -88,7 +90,7 @@ body{
 
 .zoneTitle{
   color:var(--ink);
-  font-size:27.3px;
+  font-size:var(--zone-title-size);
   font-weight:900;
   text-transform:uppercase;
   letter-spacing:1px;
@@ -96,6 +98,8 @@ body{
   display:flex;
   align-items:center;
   min-height:var(--top-action-h);
+  padding-top:var(--zone-vpad);
+  padding-bottom:var(--zone-vpad);
   padding-left:var(--card-inset);
 }
 
