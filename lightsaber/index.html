@@ -23,7 +23,13 @@
     <section class="panel" aria-label="Randomize controls">
       <div class="randomizeRow">
         <div class="randomizeLeft">
-          <div class="panelTitle">RANDOMIZE</div>
+          <div class="randomizeHeaderRow">
+            <div class="panelTitle">RANDOMIZE</div>
+            <select id="randomizeModeSelect" class="randomizeModeSelect" aria-label="Randomize source">
+              <option value="voices" selected>Voices</option>
+              <option value="presets">Presets</option>
+            </select>
+          </div>
           <div class="randomizeModes" id="randomizeModes">
             <div class="randomizeModeStack">
               <label class="randomizeModeTitle"><input type="checkbox" data-randomize-mode="texture" checked /> Texture</label>
