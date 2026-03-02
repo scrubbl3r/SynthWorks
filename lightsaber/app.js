@@ -219,6 +219,39 @@
     { loPer: 0xff, hiPer: 0x01, loDt: 0x00, hiDt: 0x18, hiEn: 0x41, swpDt: 0x0480, loMod: 0x00, vAmp: 0xff },
   ];
   const DEFENDER_NOTTAB = [0x47, 0x3f, 0x37, 0x30, 0x29, 0x23, 0x1d, 0x17, 0x12, 0x0d, 0x08, 0x04];
+  const DEFENDER_AUDITION_LABELS = {
+    0x01: "GWAVE #1 HBDV",
+    0x02: "GWAVE #2 STDV (start-distorto)",
+    0x03: "GWAVE #3 DP1V",
+    0x04: "GWAVE #4 XBV",
+    0x05: "GWAVE #5 BBSV",
+    0x06: "GWAVE #6 HBEV",
+    0x07: "GWAVE #7 PROTV",
+    0x08: "GWAVE #8 SPNRV",
+    0x09: "GWAVE #9 CLDWNV",
+    0x0a: "GWAVE #10 SV3 (START1 table)",
+    0x0b: "GWAVE #11 ED10 (START2 table)",
+    0x0c: "GWAVE #12 ED12",
+    0x0d: "SP1 (spinner #1)",
+    0x0e: "BG1",
+    0x0f: "BG2INC",
+    0x10: "LITE",
+    0x11: "BON2 / smartbomb core",
+    0x12: "BGEND",
+    0x13: "TURBO",
+    0x14: "APPEAR",
+    0x15: "THRUST",
+    0x16: "CANNON",
+    0x17: "RADIO",
+    0x18: "HYPER",
+    0x19: "SCREAM",
+    0x1a: "ORGANT (tune)",
+    0x1b: "ORGANN (note)",
+    0x1c: "VARI SAW",
+    0x1d: "VARI FOSHIT",
+    0x1e: "VARI QUASAR",
+    0x1f: "VARI CABSHK",
+  };
   const DEFENDER_ROM_BASE = 0xf800;
   const DEFENDER_ROM_ADDR = {
     RADSND: 0xfd9a,
@@ -3408,6 +3441,23 @@
     }
   }
 
+  function buildAuditionCommandOptions() {
+    if (!auditionCommandSelect) return;
+    const current = clamp(parseHexOrDec(auditionCommandSelect.value || "0x02", 0x02), 0x01, 0x3f);
+    auditionCommandSelect.innerHTML = "";
+    for (let cmd = 0x01; cmd <= 0x3f; cmd++) {
+      const opt = document.createElement("option");
+      const hex = `0x${cmd.toString(16).padStart(2, "0").toUpperCase()}`;
+      let label = DEFENDER_AUDITION_LABELS[cmd];
+      if (!label && cmd >= 0x20) label = "VARI (extended)";
+      if (!label) label = "Unknown";
+      opt.value = hex;
+      opt.textContent = `${hex} ${label}`;
+      if (cmd === current) opt.selected = true;
+      auditionCommandSelect.appendChild(opt);
+    }
+  }
+
   function updateAuditionHexReadout() {
     if (!auditionCommandHex) return;
     const cmd = clamp(parseHexOrDec(auditionCommandSelect ? auditionCommandSelect.value : "0x02", 0x02), 0, 0xff);
@@ -3516,5 +3566,6 @@
   }
 
   init();
+  buildAuditionCommandOptions();
   updateAuditionHexReadout();
 })();
