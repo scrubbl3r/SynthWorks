@@ -166,6 +166,7 @@
       mode: "texture",
       presetEngine: "none",
       presetBaseHz: 110,
+      presetSweep: 9.5,
       presetStepMs: 34,
       presetPeriodScale: 8.4,
       presetEchoes: 3,
@@ -173,6 +174,8 @@
       presetEchoDecay: 0.58,
       presetBits: 7,
       presetPulseWidth: 0.5,
+      presetHPF: 90,
+      presetLPF: 10000,
       engineEnabled: true,
       clockRate: +RNG.range(2.0, 8.0).toFixed(2),
       gateDepth: +RNG.range(0.25, 0.55).toFixed(2),
@@ -469,6 +472,7 @@
     p0.startupContourTimeScale = 1.0;
 
     p0.presetBaseHz = +RNG.range(95, 150).toFixed(1);
+    p0.presetSweep = +RNG.range(7.0, 13.5).toFixed(1);
     p0.presetStepMs = +RNG.range(28, 40).toFixed(1);
     p0.presetPeriodScale = +RNG.range(6.8, 10.2).toFixed(2);
     p0.presetEchoes = Math.round(RNG.range(2, 4));
@@ -476,6 +480,8 @@
     p0.presetEchoDecay = +RNG.range(0.46, 0.68).toFixed(2);
     p0.presetBits = Math.round(RNG.range(6, 8));
     p0.presetPulseWidth = +RNG.range(0.44, 0.58).toFixed(2);
+    p0.presetHPF = Math.round(RNG.range(60, 200));
+    p0.presetLPF = Math.round(RNG.range(7200, 12000));
 
     const presetVoices = [p0];
     presetVoices.forEach((p) => {
@@ -1031,12 +1037,14 @@
       const steps = DEFENDER_STARTUP_DISTORTO;
       const stepMs = clamp(p.presetStepMs ?? 34, 12, 120);
       const baseHz = clamp(p.presetBaseHz ?? 110, 40, 420);
-      const scale = clamp(p.presetPeriodScale ?? 8.4, 0.8, 24.0);
+      const sweep = clamp(p.presetSweep ?? 9.5, 0.5, 24.0);
       const echoes = clamp(Math.round(p.presetEchoes ?? 3), 1, 6);
       const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 220) / 1000;
       const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.95);
       const pulseWidth = clamp(p.presetPulseWidth ?? 0.5, 0.12, 0.88);
       const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
+      const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
+      const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
 
       const totalSec = (steps.length * stepMs) / 1000 + (echoes - 1) * echoDelay;
       presetGateUntil = t + totalSec;
@@ -1045,6 +1053,8 @@
       const wave = makePWMWave(ctx, pulseWidth);
       presetOsc.setPeriodicWave(wave);
       presetCrusher.setBits(bitDepth);
+      presetHP.frequency.setTargetAtTime(hpf, t, 0.02);
+      presetLP.frequency.setTargetAtTime(lpf, t, 0.02);
 
       presetOsc.frequency.cancelScheduledValues(t);
       presetGain.gain.cancelScheduledValues(t);
@@ -1056,9 +1066,12 @@
         for (let i = 0; i < steps.length; i++) {
           const ti = t0 + (i * stepMs) / 1000;
           const periodValue = steps[i];
-          const hz = clamp(baseHz + periodValue * scale, 40, 8000);
+          const periodNorm = clamp((periodValue - 1) / 79, 0, 1);
+          const hz = clamp(baseHz * (1 + (1 - periodNorm) * sweep), 40, 8000);
+          const stepDur = stepMs / 1000;
           presetOsc.frequency.setValueAtTime(hz, ti);
           presetGain.gain.setValueAtTime(echoLevel, ti);
+          presetGain.gain.linearRampToValueAtTime(echoLevel * 0.72, ti + stepDur * 0.65);
         }
       }
       presetGain.gain.setValueAtTime(0, t + totalSec);
@@ -2016,6 +2029,16 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "presetBaseHz") return `${value.toFixed(1)} Hz`;
+    if (key === "presetSweep") return value.toFixed(1);
+    if (key === "presetStepMs") return `${value.toFixed(1)} ms`;
+    if (key === "presetEchoes") return `${Math.round(value)}`;
+    if (key === "presetEchoDelayMs") return `${value.toFixed(1)} ms`;
+    if (key === "presetEchoDecay") return value.toFixed(2);
+    if (key === "presetBits") return `${Math.round(value)} bit`;
+    if (key === "presetPulseWidth") return value.toFixed(2);
+    if (key === "presetHPF") return `${Math.round(value)} Hz`;
+    if (key === "presetLPF") return `${Math.round(value)} Hz`;
     if (key === "engineEnabled") return value ? "On" : "Off";
     if (key === "clockRate") return `${value.toFixed(2)} Hz`;
     if (key === "gateDepth") return value.toFixed(2);
@@ -2217,6 +2240,34 @@
   function applyModeVisibility(mode) {
     const rows = controls.querySelectorAll("[data-mode]");
     const p = state.voiceParams[state.active] || {};
+    const isPresetStartup = p.presetEngine === "defender-startup";
+    if (isPresetStartup) {
+      const allowed = new Set([
+        "mode",
+        "presetBaseHz",
+        "presetSweep",
+        "presetStepMs",
+        "presetEchoes",
+        "presetEchoDelayMs",
+        "presetEchoDecay",
+        "presetBits",
+        "presetPulseWidth",
+        "presetHPF",
+        "presetLPF",
+        "stereoWidth",
+        "gain",
+        "textureVolume",
+      ]);
+      rows.forEach((row) => {
+        const input = row.querySelector("[data-param]");
+        const key = input && input.dataset ? input.dataset.param : "";
+        row.style.display = allowed.has(key) ? "" : "none";
+      });
+      if (texturePlayBtn) texturePlayBtn.style.display = "none";
+      if (bassPlayBtn) bassPlayBtn.style.display = "none";
+      if (noisePlayBtn) noisePlayBtn.style.display = "none";
+      return;
+    }
     rows.forEach((row) => {
       const m = row.dataset.mode;
       const showByMode = m === "all" || m === mode;
