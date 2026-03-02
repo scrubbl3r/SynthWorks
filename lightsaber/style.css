@@ -563,6 +563,49 @@ body{
   display:none;
 }
 
+.auditionRow{
+  display:grid;
+  grid-template-columns: 4fr 1fr;
+  align-items:stretch;
+  gap:0;
+  min-height:72px;
+}
+
+.auditionLeft{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:8px;
+  padding:var(--card-inset);
+}
+
+.auditionControls{
+  display:grid;
+  grid-template-columns: 1fr auto;
+  align-items:center;
+  gap:10px;
+  width:100%;
+}
+
+#auditionCommandSelect{
+  width:100%;
+  min-width:0;
+}
+
+#auditionCommandHex{
+  min-width:56px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+}
+
+.auditionRight{
+  display:flex;
+  align-items:stretch;
+  justify-content:flex-end;
+}
+
 .globalSpatialCard{
   padding:0;
 }

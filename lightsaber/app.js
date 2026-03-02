@@ -7,6 +7,9 @@
   const activeLabel = document.getElementById("activeLabel");
   const randomizeModeSelect = document.getElementById("randomizeModeSelect");
   const presetFamilySelect = document.getElementById("presetFamilySelect");
+  const auditionCommandSelect = document.getElementById("auditionCommandSelect");
+  const auditionCommandHex = document.getElementById("auditionCommandHex");
+  const auditionPlayBtn = document.getElementById("auditionPlayBtn");
   const randomizeModesWrap = document.getElementById("randomizeModes");
   const randomizePresetsWrap = document.getElementById("randomizePresets");
   const texturePlayBtn = document.getElementById("texturePlayBtn");
@@ -25,6 +28,12 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const clamp01 = (v) => clamp(v, 0, 1);
   const lerp = (a, b, t) => a + (b - a) * t;
+  const parseHexOrDec = (s, fallback = 0) => {
+    const raw = String(s == null ? "" : s).trim().toLowerCase();
+    if (!raw) return fallback;
+    const v = raw.startsWith("0x") ? parseInt(raw, 16) : parseInt(raw, 10);
+    return Number.isFinite(v) ? v : fallback;
+  };
   // 
   const PARAMS = [
     { key: "mode", label: "Mode" },
@@ -1515,6 +1524,48 @@
       return new Float32Array(out.length ? out : [0]);
     }
 
+    function renderNoiseBurstPcm(sec = 0.5, hpHz = 80, lpHz = 3000, decay = 4.5) {
+      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
+      const out = new Float32Array(len);
+      let hp = 0;
+      let lp = 0;
+      const hpA = Math.exp(-2 * Math.PI * Math.max(20, hpHz) / ctx.sampleRate);
+      const lpA = Math.exp(-2 * Math.PI * Math.max(40, lpHz) / ctx.sampleRate);
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        hp = hpA * hp + (1 - hpA) * white;
+        const hpn = white - hp;
+        lp = lpA * lp + (1 - lpA) * hpn;
+        const env = Math.exp(-decay * (i / len));
+        out[i] = lp * env;
+      }
+      return out;
+    }
+
+    function renderScreamPcm(sec = 1.25) {
+      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
+      const out = new Float32Array(len);
+      const echoes = [0x40, 0x00, 0x00, 0x00];
+      const timers = [0, 0, 0, 0];
+      for (let i = 0; i < len; i++) {
+        let amp = 0.8;
+        let s = 0;
+        for (let e = 0; e < 4; e++) {
+          timers[e] = (timers[e] + echoes[e]) & 0xff;
+          if (timers[e] & 0x80) s += amp;
+          amp *= 0.5;
+        }
+        out[i] = clamp((s / 0.9375) * 0.9, -1, 1);
+        if (i % Math.max(1, Math.floor(ctx.sampleRate / 240)) === 0) {
+          for (let e = 0; e < 4; e++) {
+            if (echoes[e] === 0x37 && e < 3 && echoes[e + 1] === 0x00) echoes[e + 1] = 0x41;
+            if (echoes[e] > 0) echoes[e] = Math.max(0, echoes[e] - 1);
+          }
+        }
+      }
+      return out;
+    }
+
     function renderRomCommandPcm(cmd, p, level) {
       const romTiming = !!p.presetRomTiming;
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
@@ -1561,6 +1612,21 @@
           out[i] = v * 0.75;
         }
         return out;
+      }
+      if (cmd === 0x14) {
+        // TURBO noise
+        return renderNoiseBurstPcm(0.8, 120, 2600, 2.8);
+      }
+      if (cmd === 0x15) {
+        // APPEAR / lightning-like sweep
+        return renderNoiseBurstPcm(0.6, 220, 5200, 2.0);
+      }
+      if (cmd === 0x16) {
+        // THRUST filtered noise bed
+        return renderNoiseBurstPcm(1.0, 80, 1800, 1.3);
+      }
+      if (cmd === 0x19) {
+        return renderScreamPcm(1.35);
       }
       // Unknown/special commands fallback to silence.
       return new Float32Array([0]);
@@ -1673,6 +1739,38 @@
 
       const buf = ctx.createBuffer(1, mix.length, ctx.sampleRate);
       buf.getChannelData(0).set(mix);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(presetInput);
+      src.start(t);
+      presetSrc = src;
+      presetGain.gain.setValueAtTime(1.0, t);
+      presetGain.gain.linearRampToValueAtTime(0.0, t + totalSec);
+    }
+
+    function triggerPresetCommand(cmd, p, t, level) {
+      const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
+      const lpf = clamp(p.presetLPF ?? 12000, 1200, 16000);
+      const useCabinet = p.presetCabinet !== false;
+      const pcm = renderRomCommandPcm(cmd & 0xff, p, clamp(level, 0.01, 2.0));
+      const totalSec = Math.max(0.04, pcm.length / ctx.sampleRate);
+      presetGateUntil = t + totalSec;
+      triggerSpatialOneShot(totalSec, t);
+
+      presetHP.frequency.setTargetAtTime(hpf, t, 0.01);
+      presetLP.frequency.setTargetAtTime(lpf, t, 0.01);
+      presetCabDry.gain.setTargetAtTime(useCabinet ? 0.0 : 1.0, t, 0.02);
+      presetCabWet.gain.setTargetAtTime(useCabinet ? 1.0 : 0.0, t, 0.02);
+      presetGain.gain.cancelScheduledValues(t);
+      presetGain.gain.setValueAtTime(0, t);
+      if (presetSrc) {
+        try { presetSrc.stop(); } catch (_) {}
+        try { presetSrc.disconnect(); } catch (_) {}
+        presetSrc = null;
+      }
+
+      const buf = ctx.createBuffer(1, pcm.length, ctx.sampleRate);
+      buf.getChannelData(0).set(pcm);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(presetInput);
@@ -2193,7 +2291,11 @@
       });
     }
 
-    return { apply, rerollSpatialMap };
+    function auditionCommand(cmd, p, level = 1.0) {
+      triggerPresetCommand(cmd & 0xff, p, ctx.currentTime, level);
+    }
+
+    return { apply, rerollSpatialMap, auditionCommand };
   }
 
   function initVoices() {
@@ -3024,6 +3126,39 @@
     }
   }
 
+  function updateAuditionHexReadout() {
+    if (!auditionCommandHex) return;
+    const cmd = clamp(parseHexOrDec(auditionCommandSelect ? auditionCommandSelect.value : "0x02", 0x02), 0, 0xff);
+    auditionCommandHex.textContent = `0x${cmd.toString(16).padStart(2, "0")}`;
+  }
+
+  function buildAuditionPresetParams() {
+    const p = state.voiceParams[state.active] || makeDefaultVoice();
+    return {
+      presetRomTiming: p.presetRomTiming !== false,
+      presetStrictRomLoop: p.presetStrictRomLoop !== false,
+      presetCpuHz: p.presetCpuHz ?? 894886,
+      presetBits: p.presetBits ?? 7,
+      presetStepMs: p.presetStepMs ?? 34,
+      presetBaseHz: p.presetBaseHz ?? 110,
+      presetHPF: p.presetHPF ?? 90,
+      presetLPF: p.presetLPF ?? 14000,
+      presetCabinet: p.presetCabinet === true,
+    };
+  }
+
+  async function playAuditionCommand() {
+    await startAudio();
+    const cmd = clamp(parseHexOrDec(auditionCommandSelect ? auditionCommandSelect.value : "0x02", 0x02), 0, 0xff);
+    updateAuditionHexReadout();
+    const voiceIndex = state.activeTracks[state.active]
+      ? state.active
+      : state.activeTracks.findIndex(Boolean);
+    if (voiceIndex < 0 || !state.voices[voiceIndex] || !state.voices[voiceIndex].auditionCommand) return;
+    const params = buildAuditionPresetParams();
+    state.voices[voiceIndex].auditionCommand(cmd, params, 1.0);
+  }
+
   function init() {
     state.globalSpatialize = 1.0;
     if (!state.voiceParams.length) {
@@ -3088,10 +3223,16 @@
   };
   if (playBtn) playBtn.addEventListener("click", onToggleMute);
   if (playBtn2) playBtn2.addEventListener("click", replayAllVoices);
+  if (auditionPlayBtn) auditionPlayBtn.addEventListener("click", playAuditionCommand);
+  if (auditionCommandSelect) {
+    auditionCommandSelect.addEventListener("change", updateAuditionHexReadout);
+    auditionCommandSelect.addEventListener("input", updateAuditionHexReadout);
+  }
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
     startBtn.addEventListener("click", startAudio);
   }
 
   init();
+  updateAuditionHexReadout();
 })();

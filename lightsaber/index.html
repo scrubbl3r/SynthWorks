@@ -63,6 +63,32 @@
       </div>
     </section>
 
+    <section class="panel" aria-label="Defender command audition">
+      <div class="auditionRow">
+        <div class="auditionLeft">
+          <div class="panelTitle">DEFENDER COMMAND AUDITION</div>
+          <div class="auditionControls">
+            <select id="auditionCommandSelect" class="randomizeModeSelect" aria-label="Defender command">
+              <option value="0x02" selected>0x02 START DISTORTO (STDV)</option>
+              <option value="0x0a">0x0A START1</option>
+              <option value="0x0b">0x0B START2</option>
+              <option value="0x11">0x11 BON2 / SMARTBOMB CORE</option>
+              <option value="0x14">0x14 TURBO</option>
+              <option value="0x15">0x15 APPEAR</option>
+              <option value="0x16">0x16 THRUST</option>
+              <option value="0x17">0x17 RADIO</option>
+              <option value="0x18">0x18 HYPER</option>
+              <option value="0x19">0x19 SCREAM</option>
+            </select>
+            <output id="auditionCommandHex">0x02</output>
+          </div>
+        </div>
+        <div class="auditionRight">
+          <button id="auditionPlayBtn" class="regen randomizeAction" type="button">Play Command</button>
+        </div>
+      </div>
+    </section>
+
     <section class="voiceStrip" aria-label="Lightsaber voice stack">
       <div class="voiceGrid" id="voiceGrid"></div>
     </section>
