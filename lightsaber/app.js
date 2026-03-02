@@ -120,6 +120,12 @@
     }
   };
   const ENV_TOTAL_MS = 5000;
+  // Defender sound ROM "START DISTORTO SOUND" (STDSND) period contour.
+  const DEFENDER_STARTUP_DISTORTO = [
+    1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 6, 8, 10, 12, 16,
+    20, 24, 32, 48, 64, 80, 64, 48, 32, 16, 12, 10, 8, 7, 6, 5,
+    4, 3, 2, 2, 1, 1, 1
+  ];
 
   function makeEnvelopeEndpoints(aDur, sDur, dDur) {
     const a = clamp(Math.round(aDur), 0, ENV_TOTAL_MS);
@@ -291,6 +297,9 @@
         };
     const mode = RNG.pick(modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
+    p.startupContour = false;
+    p.startupContourDepth = 0;
+    p.startupContourJitter = 0;
     p.engineEnabled = RNG.next() < 0.3;
     p.clockRate = +RNG.range(0.6, 12.0).toFixed(2);
     p.gateDepth = +RNG.range(0.0, 0.8).toFixed(2);
@@ -406,105 +415,48 @@
       return p;
     };
 
+    // Primary voice: one-shot "start distorto" style bright pulse contour.
     const p0 = mk();
     p0.mode = "texture";
     p0.textureBehavior = "oneshot";
     p0.engineEnabled = true;
-    p0.clockRate = +RNG.range(5.4, 10.4).toFixed(2);
-    p0.gateDepth = +RNG.range(0.42, 0.72).toFixed(2);
-    p0.stepAmount = +RNG.range(0.34, 0.72).toFixed(2);
-    p0.delayMix = +RNG.range(0.08, 0.2).toFixed(2);
-    p0.delayTime = +RNG.range(0.06, 0.13).toFixed(3);
-    p0.feedback = +RNG.range(0.16, 0.42).toFixed(2);
-    p0.oscType = RNG.pick(["square", "sawtooth"]);
-    p0.singleOsc = false;
-    p0.pwmOn = p0.oscType === "square";
-    p0.pwm = +RNG.range(0.18, 0.58).toFixed(2);
-    p0.oscRate = +RNG.range(1.05, 1.38).toFixed(2);
-    p0.baseHz = Math.round(RNG.range(360, 620));
-    p0.unisonSpread = +RNG.range(0.0018, 0.0085).toFixed(4);
-    p0.detune = Math.round(RNG.range(4, 18));
-    p0.subMix = +RNG.range(0.0, 0.08).toFixed(2);
-    p0.drive = +RNG.range(0.32, 0.68).toFixed(2);
-    p0.filterCutoff = Math.round(RNG.range(2200, 4600));
-    p0.filterQ = +RNG.range(1.0, 2.8).toFixed(1);
-    p0.edge = +RNG.range(0.26, 0.62).toFixed(2);
-    p0.noiseMix = +RNG.range(0.0, 0.09).toFixed(2);
-    p0.textureAms = Math.round(RNG.range(24, 90));
-    p0.textureSms = Math.round(RNG.range(1300, 2000));
-    p0.textureDms = Math.round(RNG.range(2500, 2950));
+    p0.clockRate = +RNG.range(5.2, 9.8).toFixed(2);
+    p0.gateDepth = +RNG.range(0.0, 0.04).toFixed(2);
+    p0.stepAmount = +RNG.range(0.0, 0.12).toFixed(2);
+    p0.delayMix = +RNG.range(0.0, 0.05).toFixed(2);
+    p0.delayTime = +RNG.range(0.06, 0.12).toFixed(3);
+    p0.feedback = +RNG.range(0.0, 0.12).toFixed(2);
+    p0.oscType = "square";
+    p0.singleOsc = true;
+    p0.pwmOn = true;
+    p0.pwm = +RNG.range(0.12, 0.24).toFixed(2);
+    p0.oscRate = +RNG.range(0.95, 1.18).toFixed(2);
+    p0.baseHz = Math.round(RNG.range(520, 760));
+    p0.unisonSpread = +RNG.range(0.0001, 0.001).toFixed(4);
+    p0.detune = 0;
+    p0.subMix = 0.0;
+    p0.drive = +RNG.range(0.12, 0.3).toFixed(2);
+    p0.filterCutoff = Math.round(RNG.range(4200, 7600));
+    p0.filterQ = +RNG.range(0.6, 1.5).toFixed(1);
+    p0.edge = +RNG.range(0.04, 0.18).toFixed(2);
+    p0.noiseMix = 0.0;
+    p0.textureAms = Math.round(RNG.range(8, 35));
+    p0.textureSms = Math.round(RNG.range(1650, 2350));
+    p0.textureDms = Math.round(RNG.range(2500, 3150));
+    p0.textureVolume = +RNG.range(1.15, 1.45).toFixed(2);
+    p0.startupContour = true;
+    p0.startupContourDepth = +RNG.range(0.7, 1.0).toFixed(2);
+    p0.startupContourJitter = +RNG.range(0.0, 0.06).toFixed(2);
 
-    const p1 = mk();
-    p1.mode = "texture";
-    p1.textureBehavior = "oneshot";
-    p1.engineEnabled = true;
-    p1.clockRate = +RNG.range(4.2, 9.6).toFixed(2);
-    p1.gateDepth = +RNG.range(0.3, 0.6).toFixed(2);
-    p1.stepAmount = +RNG.range(0.22, 0.64).toFixed(2);
-    p1.delayMix = +RNG.range(0.05, 0.2).toFixed(2);
-    p1.delayTime = +RNG.range(0.09, 0.22).toFixed(3);
-    p1.feedback = +RNG.range(0.1, 0.34).toFixed(2);
-    p1.oscType = RNG.pick(["sawtooth", "square", "triangle"]);
-    p1.singleOsc = RNG.next() < 0.25;
-    p1.pwmOn = p1.oscType === "square";
-    p1.pwm = +RNG.range(0.2, 0.66).toFixed(2);
-    p1.oscRate = +RNG.range(1.16, 1.62).toFixed(2);
-    p1.baseHz = Math.round(RNG.range(560, 980));
-    p1.unisonSpread = +RNG.range(0.0008, 0.0042).toFixed(4);
-    p1.detune = Math.round(RNG.range(0, 8));
-    p1.subMix = +RNG.range(0.0, 0.05).toFixed(2);
-    p1.drive = +RNG.range(0.22, 0.52).toFixed(2);
-    p1.filterCutoff = Math.round(RNG.range(2600, 5000));
-    p1.filterQ = +RNG.range(0.8, 2.3).toFixed(1);
-    p1.edge = +RNG.range(0.16, 0.48).toFixed(2);
-    p1.noiseMix = +RNG.range(0.0, 0.07).toFixed(2);
-    p1.textureAms = Math.round(RNG.range(18, 80));
-    p1.textureSms = Math.round(RNG.range(980, 1850));
-    p1.textureDms = Math.round(RNG.range(2200, 2920));
+    const presetVoices = [p0];
 
-    const p2 = mk();
-    p2.mode = "noise";
-    p2.noiseBehavior = "oneshot";
-    p2.engineEnabled = true;
-    p2.clockRate = +RNG.range(5.8, 12.6).toFixed(2);
-    p2.gateDepth = +RNG.range(0.36, 0.76).toFixed(2);
-    p2.stepAmount = +RNG.range(0.3, 0.72).toFixed(2);
-    p2.delayMix = +RNG.range(0.04, 0.16).toFixed(2);
-    p2.delayTime = +RNG.range(0.06, 0.14).toFixed(3);
-    p2.feedback = +RNG.range(0.12, 0.34).toFixed(2);
-    p2.noiseType = RNG.pick(["bit", "metallic", "white"]);
-    p2.noiseAms = Math.round(RNG.range(16, 60));
-    p2.noiseSms = Math.round(RNG.range(1300, 2200));
-    p2.noiseDms = Math.round(RNG.range(2420, 2950));
-    p2.noisePeak = +RNG.range(0.74, 1.0).toFixed(2);
-    p2.noiseLPStart = Math.round(RNG.range(6200, 12000));
-    p2.noiseLPEnd = Math.round(RNG.range(1800, 4600));
-    p2.noiseSweepTime = +RNG.range(0.8, 2.4).toFixed(2);
-    p2.noiseHPF = Math.round(RNG.range(300, 1800));
-    p2.noiseRes = +RNG.range(1.4, 7.0).toFixed(1);
-    p2.noiseBoomHz = Math.round(RNG.range(30, 78));
-    p2.noiseBoomAmt = +RNG.range(0.02, 0.24).toFixed(2);
-    p2.noiseBoomDrop = +RNG.range(0.2, 0.68).toFixed(2);
-    p2.noiseRingHz = Math.round(RNG.range(680, 2400));
-    p2.noiseRingAmt = +RNG.range(0.08, 0.34).toFixed(2);
-    p2.noiseRingDrop = +RNG.range(0.18, 0.62).toFixed(2);
-    p2.noiseCrackleAmt = +RNG.range(0.24, 0.72).toFixed(2);
-    p2.noiseCrackleHPF = Math.round(RNG.range(2200, 7000));
-    p2.noiseEdgeDrive = +RNG.range(0.42, 0.96).toFixed(2);
-    p2.noiseVolume = +RNG.range(1.02, 1.24).toFixed(2);
-
-    const presetVoices = [p0, p1, p2];
-    // Controlled variation pass around the archetype.
     if (v > 0.55) {
-      p1.filterCutoff = clamp(p1.filterCutoff + Math.round(RNG.range(120, 720)), 200, 5000);
-      p2.noiseType = RNG.pick(["bit", "metallic", "pink"]);
-      p2.noiseRes = +clamp(p2.noiseRes + RNG.range(0.1, 1.1), 0.2, 12).toFixed(1);
+      p0.baseHz = clamp(p0.baseHz + Math.round(RNG.range(40, 140)), 120, 2200);
+      p0.clockRate = +clamp(p0.clockRate + RNG.range(0.4, 1.8), 0.2, 20).toFixed(2);
     }
     if (v > 0.78) {
-      p0.detune = clamp(p0.detune + Math.round(RNG.range(2, 9)), 0, 60);
-      p0.drive = +clamp(p0.drive + RNG.range(0.05, 0.22), 0, 1).toFixed(2);
-      p2.noiseEdgeDrive = +clamp(p2.noiseEdgeDrive + RNG.range(0.06, 0.18), 0, 1).toFixed(2);
-      p1.baseHz = clamp(p1.baseHz + Math.round(RNG.range(80, 280)), 60, 2400);
+      p0.pwm = +clamp(p0.pwm + RNG.range(0.03, 0.12), 0.05, 0.95).toFixed(2);
+      p0.startupContourDepth = +clamp(p0.startupContourDepth + RNG.range(0.04, 0.18), 0, 1).toFixed(2);
     }
     presetVoices.forEach((p) => {
       normalizeTextureEnvelope(p);
@@ -998,6 +950,55 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
+    function scheduleDefenderStartupContour(p, t, isSingle, spread, baseRateHz) {
+      if (!p.startupContour) return;
+      const ep = effectiveTextureEndpoints(p);
+      const total = Math.max(0.12, ep.d / 1000);
+      const depth = clamp01(p.startupContourDepth ?? 0.85);
+      const jitter = clamp(p.startupContourJitter ?? 0.0, 0, 0.15);
+      const pattern = DEFENDER_STARTUP_DISTORTO;
+      const minV = 1;
+      const maxV = 80;
+      const baseA = baseRateHz * (1 - spread * 0.5);
+      const baseB = baseRateHz * (1 + spread * 0.5);
+      const baseFilter = clamp(p.filterCutoff, 240, 12000);
+      const baseQ = clamp(p.filterQ, 0.2, 12);
+
+      oscA.frequency.cancelScheduledValues(t);
+      oscB.frequency.cancelScheduledValues(t);
+      oscSub.frequency.cancelScheduledValues(t);
+      filter.frequency.cancelScheduledValues(t);
+      filter.Q.cancelScheduledValues(t);
+      edgeGain.gain.cancelScheduledValues(t);
+
+      for (let i = 0; i < pattern.length; i++) {
+        const x = i / Math.max(1, pattern.length - 1);
+        const ti = t + x * total;
+        const periodNorm = clamp((pattern[i] - minV) / (maxV - minV), 0, 1);
+        const pitchMul = lerp(1.9, 0.55, periodNorm);
+        const brightnessMul = lerp(1.7, 0.6, periodNorm);
+        const qMul = lerp(0.9, 1.25, periodNorm);
+        const edgeAdd = (1 - periodNorm) * 0.18;
+        const j = 1 + (Math.random() * 2 - 1) * jitter;
+
+        const fa = clamp(baseA * (1 + (pitchMul - 1) * depth) * j, 50, 8000);
+        const fb = clamp(baseB * (1 + (pitchMul - 1) * depth) * j, 50, 8000);
+        const fs = clamp(baseRateHz * 0.5 * (1 + (pitchMul - 1) * depth * 0.55), 25, 4000);
+        const fcut = clamp(baseFilter * (1 + (brightnessMul - 1) * depth), 220, 14000);
+        const fq = clamp(baseQ * qMul, 0.2, 14);
+        const edgeVal = clamp(p.edge + edgeAdd * depth, 0, 1);
+
+        oscA.frequency.linearRampToValueAtTime(fa, ti);
+        if (!isSingle) {
+          oscB.frequency.linearRampToValueAtTime(fb, ti);
+          oscSub.frequency.linearRampToValueAtTime(fs, ti);
+        }
+        filter.frequency.linearRampToValueAtTime(fcut, ti);
+        filter.Q.linearRampToValueAtTime(fq, ti);
+        edgeGain.gain.linearRampToValueAtTime(edgeVal, ti);
+      }
+    }
+
     function triggerSpatialOneShot(totalSec, t) {
       oneShotSpatial.active = true;
       oneShotSpatial.t0 = t;
@@ -1205,6 +1206,7 @@
             voiceOut.gain.setTargetAtTime(0, t, 0.02);
           } else if (forceTextureTrigger || forceReplay) {
             triggerTextureOneShot(p, t);
+            scheduleDefenderStartupContour(p, t, isSingle, spread, base);
           } else if (t >= textureGateUntil) {
             voiceOut.gain.cancelScheduledValues(t);
             voiceOut.gain.setTargetAtTime(0, t, 0.01);
