@@ -133,6 +133,47 @@
     117,106,95,84,74,64,55,46,37,30,23,17,12,8,4,2,1,0,1,2,4,8,12,17,23,30,
     37,46,55,64,74,84,95,106,117,127
   ];
+  const DEFENDER_RADSND = [0x8c,0x5b,0xb6,0x40,0xbf,0x49,0xa4,0x73,0x73,0xa4,0x49,0xbf,0x40,0xb6,0x5b,0x8c];
+  const DEFENDER_WAVES = {
+    GS2: [127,217,255,217,127,36,0,36],
+    GSSQ2: [0,64,128,0,255,0,128,64],
+    GS1: [127,176,217,245,255,245,217,176,127,78,36,9,0,9,36,78],
+    GS12: [127,197,236,231,191,141,109,106,127,148,146,113,64,23,18,57],
+    GSQ22: [255,255,255,255,0,0,0,0,255,255,255,255,0,0,0,0],
+    GS72: DEFENDER_GS72.slice(),
+    GS1_7: [89,123,152,172,179,172,152,123,89,55,25,6,0,6,25,55],
+  };
+  const DEFENDER_PATTERNS = {
+    BONSND: [0xa0,0x98,0x90,0x88,0x80,0x78,0x70,0x68,0x60,0x58,0x50,0x44,0x40],
+    HBDSND: [1,1,2,2,4,4,8,8,0x10,0x20,0x28,0x30,0x38,0x40,0x48,0x50,0x60,0x70,0x80,0xa0,0xb0,0xc0],
+    STDSND: [1,1,1,1,2,2,3,3,4,4,5,6,8,0x0a,0x0c,0x10,0x14,0x18,0x20,0x30,0x40,0x50,0x40,0x30,0x20,0x10,0x0c,0x0a,8,7,6,5,4,3,2,2,1,1,1],
+    SWPAT: [8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64],
+    SPNSND: [1,1,2,2,3,4,5,6,7,8,9,0x0a,0x0c],
+    BBSND: [8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64,8,64],
+    HBESND: [1,2,4,8,9,0x0a,0x0b,0x0c,0x0e,0x0f,0x10,0x12,0x14,0x16],
+    SPNR: [0x40],
+    COOLDN: [0x10,8,1],
+    ED10FP: [7,8,9,0x0a,0x0c,8],
+    ED13FP: [0x17,0x18,0x19,0x1a,0x1b,0x1c],
+    TRBPAT: [0x80,0x7c,0x78,0x74,0x70,0x74,0x78,0x7c,0x80],
+  };
+  const DEFENDER_GWAVE_VECTORS = {
+    HBDV: { b0: 0x81, b1: 0x24, predecay: 0x00, gdfinc: 0x00, gdcnt: 0x00, pattern: "HBDSND", wave: "GSQ22" },
+    STDV: { b0: 0x12, b1: 0x05, predecay: 0x1a, gdfinc: 0xff, gdcnt: 0x00, pattern: "STDSND", wave: "GS72" },
+    DP1V: { b0: 0x11, b1: 0x05, predecay: 0x11, gdfinc: 0x01, gdcnt: 0x0f, pattern: "SWPAT", wave: "GS72" },
+    XBV: { b0: 0x11, b1: 0x31, predecay: 0x00, gdfinc: 0x01, gdcnt: 0x00, pattern: "SPNSND", wave: "GSSQ2" },
+    BBSV: { b0: 0xf4, b1: 0x12, predecay: 0x00, gdfinc: 0x00, gdcnt: 0x00, pattern: "BBSND", wave: "GS1" },
+    HBEV: { b0: 0x41, b1: 0x45, predecay: 0x00, gdfinc: 0x00, gdcnt: 0x00, pattern: "HBESND", wave: "GS72" },
+    PROTV:{ b0: 0x21, b1: 0x35, predecay: 0x11, gdfinc: 0xff, gdcnt: 0x00, pattern: "SPNSND", wave: "GS72" },
+    SPNRV:{ b0: 0x15, b1: 0x00, predecay: 0x00, gdfinc: 0xfd, gdcnt: 0x00, pattern: "SPNR", wave: "GS2" },
+    CLDWNV:{ b0: 0x31, b1: 0x11, predecay: 0x00, gdfinc: 0x01, gdcnt: 0x00, pattern: "COOLDN", wave: "GSSQ2" },
+    SV3:  { b0: 0x01, b1: 0x15, predecay: 0x01, gdfinc: 0x01, gdcnt: 0x01, pattern: "BBSND", wave: "GS72" },
+    ED10: { b0: 0xf6, b1: 0x53, predecay: 0x03, gdfinc: 0x00, gdcnt: 0x02, pattern: "ED10FP", wave: "GS12" },
+    ED12: { b0: 0x6a, b1: 0x10, predecay: 0x02, gdfinc: 0x00, gdcnt: 0x02, pattern: "ED13FP", wave: "GS2" },
+    ED17: { b0: 0x1f, b1: 0x12, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x10, pattern: "SPNR", wave: "GS1" },
+    BONV: { b0: 0x31, b1: 0x11, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x00, pattern: "BONSND", wave: "GSSQ2" },
+    TRBV: { b0: 0x12, b1: 0x06, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x01, pattern: "TRBPAT", wave: "GS1_7" },
+  };
 
   function makeEnvelopeEndpoints(aDur, sDur, dDur) {
     const a = clamp(Math.round(aDur), 0, ENV_TOTAL_MS);
@@ -1160,98 +1201,192 @@
       return (u / qLevels) * 2 - 1;
     }
 
-    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886, strictLoop = true, bitDepth = 8) {
-      // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
-      const gccnt = 2;
-      const predecay = 0x1a;
-      const waveLen = DEFENDER_GS72.length;
-      const decayStep = waveLen >> 4; // 72/16 => 4 as in WVDECA.
-      const wave = DEFENDER_GS72.map((v) => {
-        const u8 = (v - decayStep * predecay) & 0xff;
-        return (u8 - 127.5) / 127.5;
-      });
-      const holdScale = clamp(stepScale, 0.2, 6.0);
+    function add8(a, b) {
+      const sum = (a & 0xff) + (b & 0xff);
+      return { value: sum & 0xff, carry: sum > 0xff ? 1 : 0 };
+    }
+
+    function signed8(v) {
+      const n = v & 0xff;
+      return n >= 0x80 ? n - 0x100 : n;
+    }
+
+    function applyWvDeca(workingWave, romWave, factor) {
+      if (!factor) return;
+      for (let i = 0; i < workingWave.length; i++) {
+        const decUnit = (romWave[i] & 0xff) >> 4;
+        const dec = decUnit * factor;
+        workingWave[i] = (workingWave[i] - dec) & 0xff;
+      }
+    }
+
+    function periodToHoldSamples(period, useRomTiming, strictLoop, cpuHz, stepScale) {
+      if (!useRomTiming) {
+        return Math.max(1, Math.round(period * clamp(stepScale, 0.2, 6.0)));
+      }
       const hz = clamp(cpuHz || 894886, 200000, 3000000);
-      // 680x cycle model for GWAVE inner loop.
-      // Strict mode uses instruction-counted timing from the ROM loop shape:
-      // GPRLP wait ~= (DECA + BNE)*period with last branch fallthrough -> (5*period - 1) cycles.
-      // Per output sample adds fetch/store/index/compare/branch overhead.
-      // Relaxed mode keeps previous coarse approximation for compatibility.
-      const relaxedPeriodCycles = 5.0;
-      const relaxedSampleOverheadCycles = 23.0;
+      // GWAVE inner-loop cycle model from loop disassembly:
+      // wait loop ~= 5*period-1 cycles, plus fixed per-sample path overhead.
       const strictFixedCyclesPerSample = 18.0;
+      const relaxedFixedCyclesPerSample = 23.0;
+      const fixed = strictLoop ? strictFixedCyclesPerSample : relaxedFixedCyclesPerSample;
+      const cycles = (5.0 * period - 1.0) + fixed;
+      return Math.max(1, Math.round((cycles / hz) * ctx.sampleRate));
+    }
+
+    function renderRomGwaveVector(vectorName, opts = {}) {
+      const vector = DEFENDER_GWAVE_VECTORS[vectorName];
+      if (!vector) return new Float32Array(1);
+      const romWave = DEFENDER_WAVES[vector.wave] ? DEFENDER_WAVES[vector.wave].slice() : DEFENDER_WAVES.GS2.slice();
+      const pattern = DEFENDER_PATTERNS[vector.pattern] ? DEFENDER_PATTERNS[vector.pattern].slice() : [0x40];
+      const bitDepth = clamp(Math.round(opts.bitDepth ?? 7), 3, 12);
+      const stepScale = opts.stepScale ?? 1.0;
+      const useRomTiming = !!opts.romTiming;
+      const strictLoop = !!opts.strictLoop;
+      const cpuHz = opts.cpuHz ?? 894886;
+
+      const gecho = (vector.b0 >> 4) & 0x0f;
+      const gccnt = vector.b0 & 0x0f;
+      const gecdec = (vector.b1 >> 4) & 0x0f;
+      const gdfinc = signed8(vector.gdfinc);
+      let gdcnt = vector.gdcnt & 0xff;
+      let fofset = 0;
+      let gwfrq = 0;
+      let frqend = pattern.length;
+      let workingWave = romWave.slice();
+      applyWvDeca(workingWave, romWave, vector.predecay & 0xff);
+
       const out = [];
-      for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
-        const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
-        let hold;
-        if (useRomTiming) {
-          const cycles = strictLoop
-            ? (5.0 * period - 1.0 + strictFixedCyclesPerSample)
-            : (relaxedSampleOverheadCycles + period * relaxedPeriodCycles);
-          hold = Math.max(1, Math.round((cycles / hz) * ctx.sampleRate));
-        } else {
-          hold = Math.max(1, Math.round(period * holdScale));
-        }
-        for (let c = 0; c < gccnt; c++) {
-          for (let s = 0; s < wave.length; s++) {
-            const sample = quantizeSample(wave[s], bitDepth);
+      const emitPeriod = (periodU8) => {
+        const period = Math.max(1, periodU8 & 0xff);
+        const hold = periodToHoldSamples(period, useRomTiming, strictLoop, cpuHz, stepScale);
+        for (let c = 0; c < Math.max(1, gccnt); c++) {
+          for (let i = 0; i < workingWave.length; i++) {
+            const sample = quantizeSample(((workingWave[i] & 0xff) - 127.5) / 127.5, bitDepth);
             for (let h = 0; h < hold; h++) out.push(sample);
           }
         }
+      };
+
+      let guard = 0;
+      while (guard++ < 2048) {
+        for (let echo = 0; echo < Math.max(1, gecho); echo++) {
+          for (let x = gwfrq; x < frqend; x++) {
+            emitPeriod((pattern[x] + fofset) & 0xff);
+          }
+          applyWvDeca(workingWave, romWave, gecdec);
+        }
+
+        if (gdfinc === 0) break;
+        gdcnt = (gdcnt - 1) & 0xff;
+        if (gdcnt === 0) break;
+        fofset = (fofset + (gdfinc & 0xff)) & 0xff;
+
+        let x = gwfrq;
+        let found = false;
+        let restarted = false;
+        while (true) {
+          const pat = pattern[x] & 0xff;
+          const added = add8(fofset, pat);
+          const overflow = gdfinc >= 0
+            ? added.carry === 1
+            : (added.value === 0 || added.carry === 0);
+
+          if (overflow) {
+            if (found) {
+              frqend = x;
+              if (gecdec !== 0) {
+                workingWave = romWave.slice();
+                applyWvDeca(workingWave, romWave, vector.predecay & 0xff);
+              }
+              restarted = true;
+              break;
+            }
+          } else if (!found) {
+            gwfrq = x;
+            found = true;
+          }
+
+          x++;
+          if (x !== frqend) continue;
+          if (found) {
+            frqend = x;
+            if (gecdec !== 0) {
+              workingWave = romWave.slice();
+              applyWvDeca(workingWave, romWave, vector.predecay & 0xff);
+            }
+            restarted = true;
+            break;
+          }
+          return new Float32Array(out.length ? out : [0]);
+        }
+        if (!restarted) break;
       }
-      return new Float32Array(out);
+      return new Float32Array(out.length ? out : [0]);
+    }
+
+    function renderRomRadio(bitDepth = 7, maxSec = 2.8, startFreq = 100) {
+      const out = [];
+      let timerL = 0;
+      let timerH = 0;
+      let freq = clamp(Math.round(startFreq), 1, 65535);
+      const maxSamples = Math.floor(ctx.sampleRate * Math.max(0.1, maxSec));
+      const cyclesPerIter = 28.0;
+      const hold = Math.max(1, Math.round((cyclesPerIter / 894886) * ctx.sampleRate));
+
+      while (freq !== 0 && out.length < maxSamples) {
+        const addL = timerL + (freq & 0xff);
+        timerL = addL & 0xff;
+        const carryL = addL > 0xff ? 1 : 0;
+        const addH = timerH + ((freq >> 8) & 0xff) + carryL;
+        timerH = addH & 0xff;
+        const carryH = addH > 0xff ? 1 : 0;
+        if (carryH) {
+          freq = (freq + 1) & 0xffff;
+          if (freq === 0) break;
+        }
+        const idx = timerH & 0x0f;
+        const sampleU8 = DEFENDER_RADSND[idx] & 0xff;
+        const sample = quantizeSample((sampleU8 - 127.5) / 127.5, bitDepth);
+        for (let h = 0; h < hold; h++) out.push(sample);
+      }
+      return new Float32Array(out.length ? out : [0]);
     }
 
     function renderDefenderSmartbombPcm(p, level) {
-      const sr = ctx.sampleRate;
-      const burstInterval = clamp((p.presetStepMs ?? 64) / 1000, 0.016, 0.2);
-      const burstCount = clamp(Math.round(p.presetEchoes ?? 6), 1, 10);
-      const tailDelay = clamp((p.presetEchoDelayMs ?? 256) / 1000, 0.03, 0.5);
-      const decay = clamp(p.presetEchoDecay ?? 0.78, 0.2, 0.98);
+      const romTiming = !!p.presetRomTiming;
+      const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
+      const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const bits = clamp(Math.round(p.presetBits ?? 7), 3, 12);
-      const baseHz = clamp(p.presetBaseHz ?? 95, 20, 260);
+      const baseHz = clamp(p.presetBaseHz ?? 95, 30, 260);
+      const pitchScale = clamp(95 / baseHz, 0.35, 2.8);
+      const burstCount = clamp(Math.round(p.presetEchoes ?? 6), 1, 10);
+      const burstGap = clamp((p.presetStepMs ?? 64) / 1000, 0.016, 0.25);
+      const tailDelay = clamp((p.presetEchoDelayMs ?? 256) / 1000, 0.03, 0.6);
+      const decay = clamp(p.presetEchoDecay ?? 0.78, 0.2, 0.98);
 
-      const burstDur = 0.11;
-      const tailDur = 1.2;
-      const totalSec = burstCount * burstInterval + tailDelay + tailDur;
-      const len = Math.max(1, Math.ceil(totalSec * sr));
+      const bon = renderRomGwaveVector("BONV", {
+        bitDepth: bits,
+        romTiming,
+        strictLoop,
+        cpuHz,
+        stepScale: ((p.presetStepMs ?? 64) / 22.0) * pitchScale,
+      });
+      const radio = renderRomRadio(bits, 2.2, Math.round(70 + baseHz * 0.6));
+      const totalSec = burstCount * burstGap + tailDelay + radio.length / ctx.sampleRate + 0.08;
+      const len = Math.max(1, Math.ceil(totalSec * ctx.sampleRate));
       const out = new Float32Array(len);
-
-      const add = (idx, val) => {
-        if (idx < 0 || idx >= len) return;
-        out[idx] = clamp(out[idx] + val, -1, 1);
+      const add = (at, src, amp) => {
+        const start = Math.floor(at * ctx.sampleRate);
+        for (let i = 0; i < src.length && start + i < out.length; i++) {
+          out[start + i] = clamp(out[start + i] + src[i] * amp, -1, 1);
+        }
       };
 
-      for (let b = 0; b < burstCount; b++) {
-        const t0 = b * burstInterval;
-        const amp = level * Math.pow(decay, b);
-        const phaseJitter = Math.random() * Math.PI * 2;
-        const nSamples = Math.floor(burstDur * sr);
-        for (let n = 0; n < nSamples; n++) {
-          const t = n / sr;
-          const env = Math.exp(-t * 26);
-          const f = baseHz * (1.9 - 0.9 * (t / burstDur));
-          const tone = Math.sin(Math.PI * 2 * f * t + phaseJitter) * 0.58;
-          const fizz = (Math.random() * 2 - 1) * 0.68 * env;
-          const crack = Math.sign(Math.sin(Math.PI * 2 * (f * 6.2) * t + phaseJitter)) * 0.12 * env;
-          const sample = quantizeSample((tone + fizz + crack) * env * amp, bits);
-          add(Math.floor((t0 + t) * sr), sample);
-        }
+      for (let i = 0; i < burstCount; i++) {
+        add(i * burstGap, bon, level * Math.pow(decay, i));
       }
-
-      const tailStart = burstCount * burstInterval + tailDelay;
-      const tailSamples = Math.floor(tailDur * sr);
-      const tailPhase = Math.random() * Math.PI * 2;
-      for (let n = 0; n < tailSamples; n++) {
-        const t = n / sr;
-        const env = Math.exp(-t * 2.3);
-        const f = baseHz * (0.8 - 0.5 * (t / tailDur));
-        const rumble = Math.sin(Math.PI * 2 * f * t + tailPhase) * 0.55;
-        const hiss = (Math.random() * 2 - 1) * 0.16 * env;
-        const sample = quantizeSample((rumble + hiss) * env * level * 0.86, bits);
-        add(Math.floor((tailStart + t) * sr), sample);
-      }
-
+      add(burstCount * burstGap + tailDelay, radio, level * 0.82);
       return out;
     }
 
@@ -1268,7 +1403,13 @@
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
       const stepScale = stepMs / 22.0;
-      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz, strictLoop, bitDepth);
+      const basePcm = renderRomGwaveVector("STDV", {
+        bitDepth,
+        romTiming,
+        strictLoop,
+        cpuHz,
+        stepScale,
+      });
       const baseDur = basePcm.length / ctx.sampleRate;
       const totalSec = baseDur + (echoes - 1) * echoDelay;
 
