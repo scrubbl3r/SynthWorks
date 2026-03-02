@@ -434,40 +434,40 @@
     p0.oscType = "square";
     p0.singleOsc = true;
     p0.pwmOn = true;
-    p0.pwm = +RNG.range(0.16, 0.32).toFixed(2);
-    p0.oscRate = +RNG.range(0.72, 0.96).toFixed(2);
-    p0.baseHz = Math.round(RNG.range(230, 390));
+    p0.pwm = +RNG.range(0.42, 0.58).toFixed(2);
+    p0.oscRate = +RNG.range(0.78, 1.02).toFixed(2);
+    p0.baseHz = Math.round(RNG.range(120, 230));
     p0.unisonSpread = +RNG.range(0.0001, 0.001).toFixed(4);
     p0.detune = 0;
-    p0.subMix = +RNG.range(0.06, 0.22).toFixed(2);
-    p0.drive = +RNG.range(0.18, 0.42).toFixed(2);
-    p0.filterCutoff = Math.round(RNG.range(2600, 5200));
-    p0.filterQ = +RNG.range(0.6, 1.5).toFixed(1);
-    p0.edge = +RNG.range(0.04, 0.18).toFixed(2);
+    p0.subMix = +RNG.range(0.0, 0.08).toFixed(2);
+    p0.drive = +RNG.range(0.42, 0.82).toFixed(2);
+    p0.filterCutoff = Math.round(RNG.range(7800, 12000));
+    p0.filterQ = +RNG.range(0.7, 1.4).toFixed(1);
+    p0.edge = +RNG.range(0.32, 0.72).toFixed(2);
     p0.noiseMix = 0.0;
     p0.textureAms = Math.round(RNG.range(8, 35));
     p0.textureSms = Math.round(RNG.range(1650, 2350));
     p0.textureDms = Math.round(RNG.range(2500, 3150));
-    p0.textureVolume = +RNG.range(1.1, 1.35).toFixed(2);
+    p0.textureVolume = +RNG.range(1.15, 1.45).toFixed(2);
     p0.startupContour = true;
-    p0.startupContourDepth = +RNG.range(0.55, 0.82).toFixed(2);
-    p0.startupContourJitter = +RNG.range(0.0, 0.02).toFixed(2);
-    p0.startupContourDirection = "down";
+    p0.startupContourDepth = +RNG.range(0.22, 0.46).toFixed(2);
+    p0.startupContourJitter = +RNG.range(0.0, 0.01).toFixed(2);
+    p0.startupContourDirection = "up";
     p0.startupContourQuantize = 10;
-    p0.startupContourPitchDepth = +RNG.range(0.38, 0.62).toFixed(2);
-    p0.startupContourTimbreDepth = +RNG.range(0.72, 1.0).toFixed(2);
+    p0.startupContourPitchDepth = +RNG.range(0.08, 0.22).toFixed(2);
+    p0.startupContourTimbreDepth = +RNG.range(0.8, 1.0).toFixed(2);
     p0.startupContourTimeScale = +RNG.range(0.82, 1.08).toFixed(2);
 
     const presetVoices = [p0];
 
     if (v > 0.55) {
-      p0.baseHz = clamp(p0.baseHz + Math.round(RNG.range(40, 140)), 120, 2200);
-      p0.clockRate = +clamp(p0.clockRate + RNG.range(0.4, 1.8), 0.2, 20).toFixed(2);
+      p0.baseHz = clamp(p0.baseHz + Math.round(RNG.range(10, 70)), 80, 2200);
+      p0.clockRate = +clamp(p0.clockRate + RNG.range(0.2, 1.2), 0.2, 20).toFixed(2);
     }
     if (v > 0.78) {
       p0.pwm = +clamp(p0.pwm + RNG.range(0.03, 0.12), 0.05, 0.95).toFixed(2);
       p0.startupContourDepth = +clamp(p0.startupContourDepth + RNG.range(0.04, 0.18), 0, 1).toFixed(2);
-      p0.startupContourPitchDepth = +clamp(p0.startupContourPitchDepth + RNG.range(0.04, 0.14), 0, 1).toFixed(2);
+      p0.startupContourPitchDepth = +clamp(p0.startupContourPitchDepth + RNG.range(0.01, 0.06), 0, 1).toFixed(2);
     }
     presetVoices.forEach((p) => {
       normalizeTextureEnvelope(p);
@@ -998,16 +998,16 @@
         if (quantizeSteps >= 2) {
           periodNorm = Math.round(periodNorm * (quantizeSteps - 1)) / (quantizeSteps - 1);
         }
-        const pitchMul = lerp(1.05, 0.42, periodNorm);
-        const brightnessMul = lerp(1.45, 0.72, periodNorm);
-        const qMul = lerp(0.9, 1.25, periodNorm);
-        const edgeAdd = (1 - periodNorm) * 0.12;
+        const pitchMul = lerp(0.92, 1.14, periodNorm);
+        const brightnessMul = lerp(0.95, 1.28, periodNorm);
+        const qMul = lerp(0.85, 1.15, periodNorm);
+        const edgeAdd = periodNorm * 0.08;
         const j = 1 + (Math.random() * 2 - 1) * jitter;
 
         const fa = clamp(baseA * (1 + (pitchMul - 1) * pitchDepth) * j, 50, 8000);
         const fb = clamp(baseB * (1 + (pitchMul - 1) * pitchDepth) * j, 50, 8000);
         const fs = clamp(baseRateHz * 0.5 * (1 + (pitchMul - 1) * pitchDepth * 0.45), 25, 4000);
-        const fcut = clamp(baseFilter * (1 + (brightnessMul - 1) * timbreDepth), 220, 14000);
+        const fcut = clamp(baseFilter * (1 + (brightnessMul - 1) * timbreDepth), 2500, 16000);
         const fq = clamp(baseQ * qMul, 0.2, 14);
         const edgeVal = clamp(p.edge + edgeAdd * timbreDepth, 0, 1);
 
