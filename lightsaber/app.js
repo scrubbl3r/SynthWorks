@@ -208,7 +208,7 @@
     START2: [{ repeat: 1, delayTicks: 0x10, cmd: 0x0b }],
     SMARTBOMB: [
       { repeat: 6, delayTicks: 0x04, cmd: 0x11 },
-      { repeat: 1, delayTicks: 0x10, cmd: 0x17 },
+      { repeat: 1, delayTicks: 0x10, cmd: 0x12 },
     ],
   };
   const DEFENDER_VARI_VECTORS = [
@@ -237,7 +237,7 @@
     0x0f: "BG2INC",
     0x10: "LITE",
     0x11: "BON2 / smartbomb core",
-    0x12: "BGEND",
+    0x12: "BGEND / smartbomb tail",
     0x13: "TURBO",
     0x14: "APPEAR",
     0x15: "THRUST",
@@ -1867,6 +1867,48 @@
           strictLoop,
           cpuHz,
           stepScale: (stepMs / 22.0) * pitchScale,
+        });
+      }
+      if (cmd === 0x0d) {
+        // SP1 spinner family accent.
+        return renderRomGwaveVector("SPNRV", {
+          bitDepth: bits,
+          romTiming,
+          strictLoop,
+          cpuHz,
+          stepScale: (stepMs / 24.0) * pitchScale * 0.9,
+        });
+      }
+      if (cmd === 0x0e) {
+        // BG1 low background noise bed.
+        return renderNoiseRoutine({
+          decay: 0x01,
+          period: 0x0030,
+          amp: 0xb0,
+          cycnt: 0x38,
+          nfflg: 0,
+          maxSec: 1.6,
+        });
+      }
+      if (cmd === 0x0f) {
+        // BG2INC brighter/rising background variant.
+        return renderNoiseRoutine({
+          decay: 0x01,
+          period: 0x0020,
+          amp: 0xd0,
+          cycnt: 0x30,
+          nfflg: 1,
+          maxSec: 1.4,
+        });
+      }
+      if (cmd === 0x12) {
+        // BGEND / smartbomb tail: noisy crushed decay.
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0xff,
+          fdf: 1,
+          dsflg: 1,
+          sampleCount: 1450,
+          maxSec: 1.35,
         });
       }
       if (cmd === 0x17) {
