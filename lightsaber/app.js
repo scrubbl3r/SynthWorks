@@ -493,42 +493,12 @@
     p2.noiseEdgeDrive = +RNG.range(0.42, 0.96).toFixed(2);
     p2.noiseVolume = +RNG.range(1.02, 1.24).toFixed(2);
 
-    const p3 = mk();
-    p3.mode = "texture";
-    p3.textureBehavior = "oneshot";
-    p3.engineEnabled = true;
-    p3.clockRate = +RNG.range(6.2, 12.2).toFixed(2);
-    p3.gateDepth = +RNG.range(0.18, 0.46).toFixed(2);
-    p3.stepAmount = +RNG.range(0.16, 0.42).toFixed(2);
-    p3.delayMix = +RNG.range(0.0, 0.14).toFixed(2);
-    p3.delayTime = +RNG.range(0.05, 0.13).toFixed(3);
-    p3.feedback = +RNG.range(0.0, 0.24).toFixed(2);
-    p3.oscType = RNG.pick(["triangle", "sine", "square"]);
-    p3.singleOsc = true;
-    p3.pwmOn = p3.oscType === "square";
-    p3.pwm = +RNG.range(0.25, 0.62).toFixed(2);
-    p3.oscRate = +RNG.range(1.3, 1.95).toFixed(2);
-    p3.baseHz = Math.round(RNG.range(760, 1600));
-    p3.unisonSpread = +RNG.range(0.0001, 0.0022).toFixed(4);
-    p3.detune = Math.round(RNG.range(0, 4));
-    p3.subMix = +RNG.range(0.0, 0.02).toFixed(2);
-    p3.drive = +RNG.range(0.14, 0.42).toFixed(2);
-    p3.filterCutoff = Math.round(RNG.range(3200, 5000));
-    p3.filterQ = +RNG.range(0.8, 2.2).toFixed(1);
-    p3.edge = +RNG.range(0.14, 0.42).toFixed(2);
-    p3.noiseMix = +RNG.range(0.0, 0.04).toFixed(2);
-    p3.textureAms = Math.round(RNG.range(8, 46));
-    p3.textureSms = Math.round(RNG.range(620, 1550));
-    p3.textureDms = Math.round(RNG.range(1700, 2520));
-    p3.textureVolume = +RNG.range(0.92, 1.12).toFixed(2);
-
-    const presetVoices = [p0, p1, p2, p3];
+    const presetVoices = [p0, p1, p2];
     // Controlled variation pass around the archetype.
     if (v > 0.55) {
       p1.filterCutoff = clamp(p1.filterCutoff + Math.round(RNG.range(120, 720)), 200, 5000);
       p2.noiseType = RNG.pick(["bit", "metallic", "pink"]);
       p2.noiseRes = +clamp(p2.noiseRes + RNG.range(0.1, 1.1), 0.2, 12).toFixed(1);
-      p3.oscType = RNG.pick(["triangle", "square", "sawtooth"]);
     }
     if (v > 0.78) {
       p0.detune = clamp(p0.detune + Math.round(RNG.range(2, 9)), 0, 60);
