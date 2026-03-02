@@ -300,6 +300,11 @@
     p.startupContour = false;
     p.startupContourDepth = 0;
     p.startupContourJitter = 0;
+    p.startupContourDirection = "down";
+    p.startupContourQuantize = 0;
+    p.startupContourPitchDepth = 0;
+    p.startupContourTimbreDepth = 0;
+    p.startupContourTimeScale = 1.0;
     p.engineEnabled = RNG.next() < 0.3;
     p.clockRate = +RNG.range(0.6, 12.0).toFixed(2);
     p.gateDepth = +RNG.range(0.0, 0.8).toFixed(2);
@@ -429,24 +434,29 @@
     p0.oscType = "square";
     p0.singleOsc = true;
     p0.pwmOn = true;
-    p0.pwm = +RNG.range(0.12, 0.24).toFixed(2);
-    p0.oscRate = +RNG.range(0.95, 1.18).toFixed(2);
-    p0.baseHz = Math.round(RNG.range(520, 760));
+    p0.pwm = +RNG.range(0.16, 0.32).toFixed(2);
+    p0.oscRate = +RNG.range(0.72, 0.96).toFixed(2);
+    p0.baseHz = Math.round(RNG.range(230, 390));
     p0.unisonSpread = +RNG.range(0.0001, 0.001).toFixed(4);
     p0.detune = 0;
-    p0.subMix = 0.0;
-    p0.drive = +RNG.range(0.12, 0.3).toFixed(2);
-    p0.filterCutoff = Math.round(RNG.range(4200, 7600));
+    p0.subMix = +RNG.range(0.06, 0.22).toFixed(2);
+    p0.drive = +RNG.range(0.18, 0.42).toFixed(2);
+    p0.filterCutoff = Math.round(RNG.range(2600, 5200));
     p0.filterQ = +RNG.range(0.6, 1.5).toFixed(1);
     p0.edge = +RNG.range(0.04, 0.18).toFixed(2);
     p0.noiseMix = 0.0;
     p0.textureAms = Math.round(RNG.range(8, 35));
     p0.textureSms = Math.round(RNG.range(1650, 2350));
     p0.textureDms = Math.round(RNG.range(2500, 3150));
-    p0.textureVolume = +RNG.range(1.15, 1.45).toFixed(2);
+    p0.textureVolume = +RNG.range(1.1, 1.35).toFixed(2);
     p0.startupContour = true;
-    p0.startupContourDepth = +RNG.range(0.7, 1.0).toFixed(2);
-    p0.startupContourJitter = +RNG.range(0.0, 0.06).toFixed(2);
+    p0.startupContourDepth = +RNG.range(0.55, 0.82).toFixed(2);
+    p0.startupContourJitter = +RNG.range(0.0, 0.02).toFixed(2);
+    p0.startupContourDirection = "down";
+    p0.startupContourQuantize = 10;
+    p0.startupContourPitchDepth = +RNG.range(0.38, 0.62).toFixed(2);
+    p0.startupContourTimbreDepth = +RNG.range(0.72, 1.0).toFixed(2);
+    p0.startupContourTimeScale = +RNG.range(0.82, 1.08).toFixed(2);
 
     const presetVoices = [p0];
 
@@ -457,6 +467,7 @@
     if (v > 0.78) {
       p0.pwm = +clamp(p0.pwm + RNG.range(0.03, 0.12), 0.05, 0.95).toFixed(2);
       p0.startupContourDepth = +clamp(p0.startupContourDepth + RNG.range(0.04, 0.18), 0, 1).toFixed(2);
+      p0.startupContourPitchDepth = +clamp(p0.startupContourPitchDepth + RNG.range(0.04, 0.14), 0, 1).toFixed(2);
     }
     presetVoices.forEach((p) => {
       normalizeTextureEnvelope(p);
@@ -953,16 +964,22 @@
     function scheduleDefenderStartupContour(p, t, isSingle, spread, baseRateHz) {
       if (!p.startupContour) return;
       const ep = effectiveTextureEndpoints(p);
-      const total = Math.max(0.12, ep.d / 1000);
+      const timeScale = clamp(p.startupContourTimeScale ?? 1.0, 0.35, 1.8);
+      const total = Math.max(0.12, (ep.d / 1000) * timeScale);
       const depth = clamp01(p.startupContourDepth ?? 0.85);
+      const pitchDepth = clamp01(p.startupContourPitchDepth ?? depth);
+      const timbreDepth = clamp01(p.startupContourTimbreDepth ?? depth);
       const jitter = clamp(p.startupContourJitter ?? 0.0, 0, 0.15);
       const pattern = DEFENDER_STARTUP_DISTORTO;
+      const direction = p.startupContourDirection === "up" ? "up" : "down";
+      const quantizeSteps = clamp(Math.round(p.startupContourQuantize ?? 0), 0, 32);
       const minV = 1;
       const maxV = 80;
       const baseA = baseRateHz * (1 - spread * 0.5);
       const baseB = baseRateHz * (1 + spread * 0.5);
       const baseFilter = clamp(p.filterCutoff, 240, 12000);
       const baseQ = clamp(p.filterQ, 0.2, 12);
+      let monotonicNorm = direction === "down" ? 0 : 1;
 
       oscA.frequency.cancelScheduledValues(t);
       oscB.frequency.cancelScheduledValues(t);
@@ -974,19 +991,25 @@
       for (let i = 0; i < pattern.length; i++) {
         const x = i / Math.max(1, pattern.length - 1);
         const ti = t + x * total;
-        const periodNorm = clamp((pattern[i] - minV) / (maxV - minV), 0, 1);
-        const pitchMul = lerp(1.9, 0.55, periodNorm);
-        const brightnessMul = lerp(1.7, 0.6, periodNorm);
+        const rawPeriodNorm = clamp((pattern[i] - minV) / (maxV - minV), 0, 1);
+        if (direction === "down") monotonicNorm = Math.max(monotonicNorm, rawPeriodNorm);
+        else monotonicNorm = Math.min(monotonicNorm, rawPeriodNorm);
+        let periodNorm = monotonicNorm;
+        if (quantizeSteps >= 2) {
+          periodNorm = Math.round(periodNorm * (quantizeSteps - 1)) / (quantizeSteps - 1);
+        }
+        const pitchMul = lerp(1.05, 0.42, periodNorm);
+        const brightnessMul = lerp(1.45, 0.72, periodNorm);
         const qMul = lerp(0.9, 1.25, periodNorm);
-        const edgeAdd = (1 - periodNorm) * 0.18;
+        const edgeAdd = (1 - periodNorm) * 0.12;
         const j = 1 + (Math.random() * 2 - 1) * jitter;
 
-        const fa = clamp(baseA * (1 + (pitchMul - 1) * depth) * j, 50, 8000);
-        const fb = clamp(baseB * (1 + (pitchMul - 1) * depth) * j, 50, 8000);
-        const fs = clamp(baseRateHz * 0.5 * (1 + (pitchMul - 1) * depth * 0.55), 25, 4000);
-        const fcut = clamp(baseFilter * (1 + (brightnessMul - 1) * depth), 220, 14000);
+        const fa = clamp(baseA * (1 + (pitchMul - 1) * pitchDepth) * j, 50, 8000);
+        const fb = clamp(baseB * (1 + (pitchMul - 1) * pitchDepth) * j, 50, 8000);
+        const fs = clamp(baseRateHz * 0.5 * (1 + (pitchMul - 1) * pitchDepth * 0.45), 25, 4000);
+        const fcut = clamp(baseFilter * (1 + (brightnessMul - 1) * timbreDepth), 220, 14000);
         const fq = clamp(baseQ * qMul, 0.2, 14);
-        const edgeVal = clamp(p.edge + edgeAdd * depth, 0, 1);
+        const edgeVal = clamp(p.edge + edgeAdd * timbreDepth, 0, 1);
 
         oscA.frequency.linearRampToValueAtTime(fa, ti);
         if (!isSingle) {
