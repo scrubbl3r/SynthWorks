@@ -879,9 +879,20 @@
     const presetLP = ctx.createBiquadFilter();
     presetLP.type = "lowpass";
     presetLP.frequency.value = 10000;
-    const presetCrusher = makeBitCrusherShaper(ctx, 7);
     const presetGain = ctx.createGain();
     presetGain.gain.value = 0.0;
+    const presetCabHP = ctx.createBiquadFilter();
+    presetCabHP.type = "highpass";
+    presetCabHP.frequency.value = 110;
+    const presetCabPeak = ctx.createBiquadFilter();
+    presetCabPeak.type = "peaking";
+    presetCabPeak.frequency.value = 1200;
+    presetCabPeak.Q.value = 0.9;
+    presetCabPeak.gain.value = 2.8;
+    const presetCabShelf = ctx.createBiquadFilter();
+    presetCabShelf.type = "highshelf";
+    presetCabShelf.frequency.value = 3600;
+    presetCabShelf.gain.value = -4.5;
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
@@ -916,13 +927,15 @@
     noiseRingGain.connect(noisePostGain);
     noisePostGain.connect(panner);
     let presetSrc = null;
-    // Dynamic source chain: buffer source -> HP -> LP -> crusher -> preset gain -> panner.
+    // Dynamic source chain: buffer source -> HP -> LP -> preset gain -> cabinet EQ -> panner.
     const presetInput = ctx.createGain();
     presetInput.connect(presetHP);
     presetHP.connect(presetLP);
-    presetLP.connect(presetCrusher.input);
-    presetCrusher.output.connect(presetGain);
-    presetGain.connect(panner);
+    presetLP.connect(presetGain);
+    presetGain.connect(presetCabHP);
+    presetCabHP.connect(presetCabPeak);
+    presetCabPeak.connect(presetCabShelf);
+    presetCabShelf.connect(panner);
 
     const spatialBands = [];
     SPATIAL_CENTERS.forEach((fc) => {
@@ -1057,7 +1070,7 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
-    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886, strictLoop = true) {
+    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886, strictLoop = true, bitDepth = 8) {
       // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
       const gccnt = 2;
       const predecay = 0x1a;
@@ -1075,8 +1088,14 @@
       // Per output sample adds fetch/store/index/compare/branch overhead.
       // Relaxed mode keeps previous coarse approximation for compatibility.
       const relaxedPeriodCycles = 5.0;
-      const relaxedSampleOverheadCycles = 26.0;
-      const strictFixedCyclesPerSample = 22.0;
+      const relaxedSampleOverheadCycles = 23.0;
+      const strictFixedCyclesPerSample = 18.0;
+      const qBits = clamp(Math.round(bitDepth), 3, 12);
+      const qLevels = Math.pow(2, qBits) - 1;
+      const quantize = (x) => {
+        const u = clamp(Math.round(((x + 1) * 0.5) * qLevels), 0, qLevels);
+        return (u / qLevels) * 2 - 1;
+      };
       const out = [];
       for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
         const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
@@ -1091,7 +1110,7 @@
         }
         for (let c = 0; c < gccnt; c++) {
           for (let s = 0; s < wave.length; s++) {
-            const sample = wave[s];
+            const sample = quantize(wave[s]);
             for (let h = 0; h < hold; h++) out.push(sample);
           }
         }
@@ -1111,14 +1130,13 @@
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
       const stepScale = stepMs / 22.0;
-      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz, strictLoop);
+      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz, strictLoop, bitDepth);
       const baseDur = basePcm.length / ctx.sampleRate;
       const totalSec = baseDur + (echoes - 1) * echoDelay;
 
       presetGateUntil = t + totalSec;
       triggerSpatialOneShot(totalSec, t);
 
-      presetCrusher.setBits(bitDepth);
       presetHP.frequency.setTargetAtTime(hpf, t, 0.02);
       presetLP.frequency.setTargetAtTime(lpf, t, 0.02);
       presetGain.gain.cancelScheduledValues(t);
