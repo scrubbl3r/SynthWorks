@@ -126,6 +126,13 @@
     20, 24, 32, 48, 64, 80, 64, 48, 32, 16, 12, 10, 8, 7, 6, 5,
     4, 3, 2, 2, 1, 1, 1
   ];
+  // Defender GWVTAB GS72 waveform bytes (length byte omitted) from vsndrm1.src.
+  const DEFENDER_GS72 = [
+    138,149,160,171,181,191,200,209,218,225,232,238,243,247,251,253,254,255,
+    254,253,251,247,243,238,232,225,218,209,200,191,181,171,160,149,138,127,
+    117,106,95,84,74,64,55,46,37,30,23,17,12,8,4,2,1,0,1,2,4,8,12,17,23,30,
+    37,46,55,64,74,84,95,106,117,127
+  ];
 
   function makeEnvelopeEndpoints(aDur, sDur, dDur) {
     const a = clamp(Math.round(aDur), 0, ENV_TOTAL_MS);
@@ -169,7 +176,7 @@
       presetSweep: 9.5,
       presetStepMs: 34,
       presetPeriodScale: 8.4,
-      presetEchoes: 3,
+      presetEchoes: 1,
       presetEchoDelayMs: 72,
       presetEchoDecay: 0.58,
       presetBits: 7,
@@ -471,17 +478,18 @@
     p0.startupContourTimbreDepth = 0;
     p0.startupContourTimeScale = 1.0;
 
-    p0.presetBaseHz = +RNG.range(95, 150).toFixed(1);
-    p0.presetSweep = +RNG.range(7.0, 13.5).toFixed(1);
-    p0.presetStepMs = +RNG.range(28, 40).toFixed(1);
-    p0.presetPeriodScale = +RNG.range(6.8, 10.2).toFixed(2);
-    p0.presetEchoes = Math.round(RNG.range(2, 4));
-    p0.presetEchoDelayMs = +RNG.range(58, 86).toFixed(1);
-    p0.presetEchoDecay = +RNG.range(0.46, 0.68).toFixed(2);
-    p0.presetBits = Math.round(RNG.range(6, 8));
-    p0.presetPulseWidth = +RNG.range(0.44, 0.58).toFixed(2);
-    p0.presetHPF = Math.round(RNG.range(60, 200));
-    p0.presetLPF = Math.round(RNG.range(7200, 12000));
+    // ROM-authentic startup defaults (STDV: $12,$05,$1A,$FF,0,39,STDSND).
+    p0.presetBaseHz = 110.0;
+    p0.presetSweep = 1.0;
+    p0.presetStepMs = 34.0;
+    p0.presetPeriodScale = 1.0;
+    p0.presetEchoes = 1;
+    p0.presetEchoDelayMs = 72.0;
+    p0.presetEchoDecay = 0.58;
+    p0.presetBits = 7;
+    p0.presetPulseWidth = 0.5;
+    p0.presetHPF = 90;
+    p0.presetLPF = 10000;
 
     const presetVoices = [p0];
     presetVoices.forEach((p) => {
@@ -740,7 +748,6 @@
   }
 
   function createVoice(ctx, master, noiseBuf) {
-    const startDistortoWave = makeStartupDistortoWave(ctx);
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
@@ -890,10 +897,10 @@
     noiseBoomGain.connect(noisePostGain);
     noiseRingGain.connect(noisePostGain);
     noisePostGain.connect(panner);
-    const presetOsc = ctx.createOscillator();
-    presetOsc.setPeriodicWave(startDistortoWave);
-    presetOsc.frequency.value = 140;
-    presetOsc.connect(presetHP);
+    let presetSrc = null;
+    // Dynamic source chain: buffer source -> HP -> LP -> crusher -> preset gain -> panner.
+    const presetInput = ctx.createGain();
+    presetInput.connect(presetHP);
     presetHP.connect(presetLP);
     presetLP.connect(presetCrusher.input);
     presetCrusher.output.connect(presetGain);
@@ -997,7 +1004,6 @@
     gateLfo.start();
     noiseBoomOsc.start();
     noiseRingOsc.start();
-    presetOsc.start();
 
     oscA.start();
     oscB.start();
@@ -1033,48 +1039,77 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
+    function renderDefenderStartupPcm(stepScale = 1.0) {
+      // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
+      const gccnt = 2;
+      const predecay = 0x1a;
+      const waveLen = DEFENDER_GS72.length;
+      const decayStep = waveLen >> 4; // 72/16 => 4 as in WVDECA.
+      const wave = DEFENDER_GS72.map((v) => {
+        const u8 = (v - decayStep * predecay) & 0xff;
+        return (u8 - 127.5) / 127.5;
+      });
+      const holdScale = clamp(stepScale, 0.2, 6.0);
+      const out = [];
+      for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
+        const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
+        const hold = Math.max(1, Math.round(period * holdScale));
+        for (let c = 0; c < gccnt; c++) {
+          for (let s = 0; s < wave.length; s++) {
+            const sample = wave[s];
+            for (let h = 0; h < hold; h++) out.push(sample);
+          }
+        }
+      }
+      return new Float32Array(out);
+    }
+
     function triggerPresetStartup(p, t, level) {
-      const steps = DEFENDER_STARTUP_DISTORTO;
       const stepMs = clamp(p.presetStepMs ?? 34, 12, 120);
-      const baseHz = clamp(p.presetBaseHz ?? 110, 40, 420);
-      const sweep = clamp(p.presetSweep ?? 9.5, 0.5, 24.0);
       const echoes = clamp(Math.round(p.presetEchoes ?? 3), 1, 6);
       const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 220) / 1000;
       const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.95);
-      const pulseWidth = clamp(p.presetPulseWidth ?? 0.5, 0.12, 0.88);
       const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
+      const stepScale = stepMs / 22.0;
+      const basePcm = renderDefenderStartupPcm(stepScale);
+      const baseDur = basePcm.length / ctx.sampleRate;
+      const totalSec = baseDur + (echoes - 1) * echoDelay;
 
-      const totalSec = (steps.length * stepMs) / 1000 + (echoes - 1) * echoDelay;
       presetGateUntil = t + totalSec;
       triggerSpatialOneShot(totalSec, t);
 
-      const wave = makePWMWave(ctx, pulseWidth);
-      presetOsc.setPeriodicWave(wave);
       presetCrusher.setBits(bitDepth);
       presetHP.frequency.setTargetAtTime(hpf, t, 0.02);
       presetLP.frequency.setTargetAtTime(lpf, t, 0.02);
-
-      presetOsc.frequency.cancelScheduledValues(t);
       presetGain.gain.cancelScheduledValues(t);
       presetGain.gain.setValueAtTime(0, t);
+      if (presetSrc) {
+        try { presetSrc.stop(); } catch (_) {}
+        try { presetSrc.disconnect(); } catch (_) {}
+        presetSrc = null;
+      }
 
+      const mix = new Float32Array(Math.max(1, Math.ceil(totalSec * ctx.sampleRate)));
       for (let e = 0; e < echoes; e++) {
-        const t0 = t + e * echoDelay;
         const echoLevel = level * Math.pow(echoDecay, e);
-        for (let i = 0; i < steps.length; i++) {
-          const ti = t0 + (i * stepMs) / 1000;
-          const periodValue = steps[i];
-          const periodNorm = clamp((periodValue - 1) / 79, 0, 1);
-          const hz = clamp(baseHz * (1 + (1 - periodNorm) * sweep), 40, 8000);
-          const stepDur = stepMs / 1000;
-          presetOsc.frequency.setValueAtTime(hz, ti);
-          presetGain.gain.setValueAtTime(echoLevel, ti);
-          presetGain.gain.linearRampToValueAtTime(echoLevel * 0.72, ti + stepDur * 0.65);
+        const start = Math.floor(e * echoDelay * ctx.sampleRate);
+        for (let i = 0; i < basePcm.length && start + i < mix.length; i++) {
+          mix[start + i] += basePcm[i] * echoLevel;
         }
       }
-      presetGain.gain.setValueAtTime(0, t + totalSec);
+      for (let i = 0; i < mix.length; i++) mix[i] = clamp(mix[i], -1, 1);
+      const buf = ctx.createBuffer(1, mix.length, ctx.sampleRate);
+      buf.getChannelData(0).set(mix);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(presetInput);
+      src.start(t);
+      presetSrc = src;
+
+      presetGain.gain.setValueAtTime(1.0, t);
+      presetGain.gain.linearRampToValueAtTime(0.0, t + totalSec);
     }
 
     function scheduleDefenderStartupContour(p, t, isSingle, spread, baseRateHz) {
@@ -2029,14 +2064,11 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
-    if (key === "presetBaseHz") return `${value.toFixed(1)} Hz`;
-    if (key === "presetSweep") return value.toFixed(1);
     if (key === "presetStepMs") return `${value.toFixed(1)} ms`;
     if (key === "presetEchoes") return `${Math.round(value)}`;
     if (key === "presetEchoDelayMs") return `${value.toFixed(1)} ms`;
     if (key === "presetEchoDecay") return value.toFixed(2);
     if (key === "presetBits") return `${Math.round(value)} bit`;
-    if (key === "presetPulseWidth") return value.toFixed(2);
     if (key === "presetHPF") return `${Math.round(value)} Hz`;
     if (key === "presetLPF") return `${Math.round(value)} Hz`;
     if (key === "engineEnabled") return value ? "On" : "Off";
@@ -2244,14 +2276,11 @@
     if (isPresetStartup) {
       const allowed = new Set([
         "mode",
-        "presetBaseHz",
-        "presetSweep",
         "presetStepMs",
         "presetEchoes",
         "presetEchoDelayMs",
         "presetEchoDecay",
         "presetBits",
-        "presetPulseWidth",
         "presetHPF",
         "presetLPF",
         "stereoWidth",
