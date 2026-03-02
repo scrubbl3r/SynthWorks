@@ -79,6 +79,21 @@
       </div>
     </section>
 
+    <section class="panel" aria-label="Command trace">
+      <div class="traceHeader">
+        <div class="panelTitle">COMMAND TRACE</div>
+        <label class="traceToggle">
+          <input id="traceEnabled" type="checkbox" />
+          <span>On</span>
+        </label>
+      </div>
+      <div class="traceActions">
+        <button id="traceClearBtn" class="miniActionBtn" type="button">Clear</button>
+        <button id="traceCopyBtn" class="miniActionBtn" type="button">Copy</button>
+      </div>
+      <pre id="traceLog" class="traceLog" aria-live="polite"></pre>
+    </section>
+
     <section class="voiceStrip" aria-label="Lightsaber voice stack">
       <div class="voiceGrid" id="voiceGrid"></div>
     </section>

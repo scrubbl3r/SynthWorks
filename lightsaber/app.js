@@ -10,6 +10,10 @@
   const auditionCommandSelect = document.getElementById("auditionCommandSelect");
   const auditionCommandHex = document.getElementById("auditionCommandHex");
   const auditionPlayBtn = document.getElementById("auditionPlayBtn");
+  const traceEnabledBox = document.getElementById("traceEnabled");
+  const traceClearBtn = document.getElementById("traceClearBtn");
+  const traceCopyBtn = document.getElementById("traceCopyBtn");
+  const traceLogEl = document.getElementById("traceLog");
   const randomizeModesWrap = document.getElementById("randomizeModes");
   const randomizePresetsWrap = document.getElementById("randomizePresets");
   const texturePlayBtn = document.getElementById("texturePlayBtn");
@@ -728,6 +732,7 @@
 
   function applyPresetFromSelection() {
     const family = presetFamilySelect ? presetFamilySelect.value : "defender-startup";
+    traceLog("preset-apply", { family });
     const built = family === "defender-smartbomb"
       ? buildDefenderSmartbombPreset()
       : buildDefenderStartupPreset();
@@ -865,7 +870,12 @@
     ready: false,
     playing: true,
     soloIndex: null,
-    globalSpatialize: 1.0
+    globalSpatialize: 1.0,
+    trace: {
+      enabled: false,
+      rows: [],
+      startAudioTime: null
+    }
   };
 
   const DEFAULT_LOCKED_PARAMS = ["gain", "textureVolume", "noiseVolume", "bassVolume"];
@@ -873,6 +883,59 @@
   function ensureParamLocks(index) {
     if (!state.paramLocks[index]) state.paramLocks[index] = {};
     return state.paramLocks[index];
+  }
+
+  function formatTraceCmd(v) {
+    const cmd = clamp(Math.round(v || 0), 0, 0xff);
+    return `0x${cmd.toString(16).padStart(2, "0")}`;
+  }
+
+  function renderTraceLog() {
+    if (!traceLogEl) return;
+    traceLogEl.textContent = state.trace.rows.join("\n");
+    traceLogEl.scrollTop = traceLogEl.scrollHeight;
+  }
+
+  function clearTraceLog() {
+    state.trace.rows.length = 0;
+    state.trace.startAudioTime = null;
+    renderTraceLog();
+  }
+
+  function setTraceEnabled(enabled) {
+    state.trace.enabled = !!enabled;
+    try {
+      localStorage.setItem("dz_trace_enabled", state.trace.enabled ? "1" : "0");
+    } catch (_) {}
+    if (traceEnabledBox) traceEnabledBox.checked = state.trace.enabled;
+    if (!state.trace.enabled) return;
+    if (!state.trace.rows.length) {
+      state.trace.rows.push("[trace] enabled");
+      renderTraceLog();
+    }
+  }
+
+  function traceLog(tag, fields = {}, audioTime = null) {
+    if (!state.trace.enabled) return;
+    const nowAudio = audioTime != null
+      ? audioTime
+      : (state.ctx ? state.ctx.currentTime : 0);
+    if (state.trace.startAudioTime == null) state.trace.startAudioTime = nowAudio;
+    const relMs = Math.max(0, (nowAudio - state.trace.startAudioTime) * 1000);
+    const bits = [];
+    Object.keys(fields).forEach((k) => {
+      const v = fields[k];
+      if (v == null) return;
+      if (k === "cmd") bits.push(`${k}=${formatTraceCmd(v)}`);
+      else if (typeof v === "number") bits.push(`${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`);
+      else bits.push(`${k}=${v}`);
+    });
+    const line = `[${relMs.toFixed(1).padStart(8)}ms] ${tag}${bits.length ? ` ${bits.join(" ")}` : ""}`;
+    state.trace.rows.push(line);
+    if (state.trace.rows.length > 500) {
+      state.trace.rows.splice(0, state.trace.rows.length - 500);
+    }
+    renderTraceLog();
   }
 
   function applyDefaultParamLocks(index) {
@@ -1108,7 +1171,7 @@
 
   const DEFENDER_ROM_TABLES = buildDefenderRomTables();
 
-  function createVoice(ctx, master, noiseBuf) {
+  function createVoice(ctx, master, noiseBuf, voiceIndex) {
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
@@ -2055,6 +2118,19 @@
         }
         commandBursts.push({ atSec: ev.atSec, pcm: slice, gain: 1.0 });
         maxEnd = Math.max(maxEnd, ev.atSec + sliceLen / ctx.sampleRate);
+        if (opts.traceTag) {
+          traceLog("script-event", {
+            voice: voiceIndex + 1,
+            src: opts.traceTag,
+            step: i + 1,
+            cmd: ev.cmd,
+            name: DEFENDER_AUDITION_LABELS[ev.cmd] || "unknown",
+            atMs: ev.atSec * 1000,
+            gapMs: ev.gap * 1000,
+            winMs: windowSec * 1000,
+            sliceMs: (sliceLen / ctx.sampleRate) * 1000
+          });
+        }
       }
 
       const out = new Float32Array(Math.max(1, Math.ceil((maxEnd + 0.01) * ctx.sampleRate)));
@@ -2074,6 +2150,7 @@
         perEventTailSec: 0.003,
         finalTailSec: 0.09,
         minEventSec: 0.012,
+        traceTag: "smartbomb",
       });
     }
 
@@ -2089,11 +2166,17 @@
         : (variant === "st1st2"
           ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
           : DEFENDER_SOUND_SCRIPTS.START1);
+      traceLog("preset-start", {
+        voice: voiceIndex + 1,
+        preset: "defender-startup",
+        variant
+      }, t);
       const stepPcm = renderSoundScriptPcmWindowed(startupScript, p, level, {
         windowFactor: 0.94,
         perEventTailSec: 0.008,
         finalTailSec: 0.18,
         minEventSec: 0.02,
+        traceTag: `startup:${variant}`
       });
       const echoes = clamp(Math.round(p.presetEchoes ?? 1), 1, 6);
       const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 320) / 1000;
@@ -2139,6 +2222,10 @@
       const hpf = clamp(p.presetHPF ?? 38, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 9500, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
+      traceLog("preset-start", {
+        voice: voiceIndex + 1,
+        preset: "defender-smartbomb"
+      }, t);
       const mix = renderDefenderSmartbombPcm(p, level);
       const totalSec = mix.length / ctx.sampleRate;
       presetGateUntil = t + totalSec;
@@ -2172,6 +2259,11 @@
       const lpf = clamp(p.presetLPF ?? 12000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
       const pcm = renderRomCommandPcm(cmd & 0xff, p, clamp(level, 0.01, 2.0));
+      traceLog("audition-command", {
+        voice: voiceIndex + 1,
+        cmd: cmd & 0xff,
+        lenMs: (pcm.length / ctx.sampleRate) * 1000
+      }, t);
       const totalSec = Math.max(0.04, pcm.length / ctx.sampleRate);
       presetGateUntil = t + totalSec;
       triggerSpatialOneShot(totalSec, t);
@@ -2721,7 +2813,7 @@
     const noiseBuf = makeNoiseBuffer(state.ctx);
     state.voices = [];
     for (let i = 0; i < 5; i++) {
-      state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
+      state.voices.push(createVoice(state.ctx, state.master, noiseBuf, i));
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
       if (p.engineEnabled == null) p.engineEnabled = true;
@@ -3597,11 +3689,18 @@
       : state.activeTracks.findIndex(Boolean);
     if (voiceIndex < 0 || !state.voices[voiceIndex] || !state.voices[voiceIndex].auditionCommand) return;
     const params = buildAuditionPresetParams();
+    traceLog("audition-play", { voice: voiceIndex + 1, cmd, name: DEFENDER_AUDITION_LABELS[cmd] || "unknown" });
     state.voices[voiceIndex].auditionCommand(cmd, params, 1.0);
   }
 
   function init() {
     state.globalSpatialize = 1.0;
+    try {
+      const v = localStorage.getItem("dz_trace_enabled");
+      state.trace.enabled = v === "1";
+    } catch (_) {
+      state.trace.enabled = false;
+    }
     if (!state.voiceParams.length) {
       for (let i = 0; i < 5; i++) {
         const p = defaults();
@@ -3623,6 +3722,8 @@
     attachControlHandlers();
     syncRandomizeModeUI();
     syncControls();
+    setTraceEnabled(state.trace.enabled);
+    renderTraceLog();
   }
 
   if (randomizeModeSelect) {
@@ -3668,6 +3769,30 @@
   if (auditionCommandSelect) {
     auditionCommandSelect.addEventListener("change", updateAuditionHexReadout);
     auditionCommandSelect.addEventListener("input", updateAuditionHexReadout);
+  }
+  if (traceEnabledBox) {
+    traceEnabledBox.addEventListener("change", () => {
+      setTraceEnabled(traceEnabledBox.checked);
+      traceLog("trace-toggle", { enabled: state.trace.enabled ? "on" : "off" });
+    });
+  }
+  if (traceClearBtn) {
+    traceClearBtn.addEventListener("click", () => {
+      clearTraceLog();
+      traceLog("trace-cleared");
+    });
+  }
+  if (traceCopyBtn) {
+    traceCopyBtn.addEventListener("click", async () => {
+      const text = traceLogEl ? traceLogEl.textContent || "" : "";
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        traceLog("trace-copied", { lines: state.trace.rows.length });
+      } catch (_) {
+        traceLog("trace-copy-failed");
+      }
+    });
   }
   if (startOverlay && startBtn) {
     startOverlay.addEventListener("click", startAudio);
