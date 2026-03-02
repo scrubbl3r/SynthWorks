@@ -164,6 +164,15 @@
     );
     return {
       mode: "texture",
+      presetEngine: "none",
+      presetBaseHz: 110,
+      presetStepMs: 34,
+      presetPeriodScale: 8.4,
+      presetEchoes: 3,
+      presetEchoDelayMs: 72,
+      presetEchoDecay: 0.58,
+      presetBits: 7,
+      presetPulseWidth: 0.5,
       engineEnabled: true,
       clockRate: +RNG.range(2.0, 8.0).toFixed(2),
       gateDepth: +RNG.range(0.25, 0.55).toFixed(2),
@@ -297,6 +306,7 @@
         };
     const mode = RNG.pick(modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
+    p.presetEngine = "none";
     p.startupContour = false;
     p.startupContourDepth = 0;
     p.startupContourJitter = 0;
@@ -409,7 +419,6 @@
   }
 
   function buildDefenderStartupPreset() {
-    const v = RNG.range(0.0, 1.0);
     const mk = () => {
       const p = defaults();
       p.gain = 0.15;
@@ -420,55 +429,55 @@
       return p;
     };
 
-    // Primary voice: one-shot "start distorto" style bright pulse contour.
+    // Dedicated preset engine voice: ROM-style stepped waveform playback.
     const p0 = mk();
     p0.mode = "texture";
+    p0.presetEngine = "defender-startup";
     p0.textureBehavior = "oneshot";
-    p0.engineEnabled = true;
-    p0.clockRate = +RNG.range(5.2, 9.8).toFixed(2);
-    p0.gateDepth = +RNG.range(0.0, 0.04).toFixed(2);
-    p0.stepAmount = +RNG.range(0.0, 0.12).toFixed(2);
-    p0.delayMix = +RNG.range(0.0, 0.05).toFixed(2);
-    p0.delayTime = +RNG.range(0.06, 0.12).toFixed(3);
-    p0.feedback = +RNG.range(0.0, 0.12).toFixed(2);
+    p0.engineEnabled = false;
+    p0.clockRate = 1.0;
+    p0.gateDepth = 0.0;
+    p0.stepAmount = 0.0;
+    p0.delayMix = 0.0;
+    p0.delayTime = 0.08;
+    p0.feedback = 0.0;
     p0.oscType = "square";
     p0.singleOsc = true;
-    p0.pwmOn = true;
-    p0.pwm = +RNG.range(0.42, 0.58).toFixed(2);
-    p0.oscRate = +RNG.range(0.78, 1.02).toFixed(2);
-    p0.baseHz = Math.round(RNG.range(120, 230));
+    p0.pwmOn = false;
+    p0.pwm = 0.5;
+    p0.oscRate = 1.0;
+    p0.baseHz = 150;
     p0.unisonSpread = +RNG.range(0.0001, 0.001).toFixed(4);
     p0.detune = 0;
-    p0.subMix = +RNG.range(0.0, 0.08).toFixed(2);
-    p0.drive = +RNG.range(0.42, 0.82).toFixed(2);
-    p0.filterCutoff = Math.round(RNG.range(7800, 12000));
-    p0.filterQ = +RNG.range(0.7, 1.4).toFixed(1);
-    p0.edge = +RNG.range(0.32, 0.72).toFixed(2);
+    p0.subMix = 0.0;
+    p0.drive = 0.0;
+    p0.filterCutoff = 12000;
+    p0.filterQ = 0.8;
+    p0.edge = 0.0;
     p0.noiseMix = 0.0;
-    p0.textureAms = Math.round(RNG.range(8, 35));
-    p0.textureSms = Math.round(RNG.range(1650, 2350));
-    p0.textureDms = Math.round(RNG.range(2500, 3150));
-    p0.textureVolume = +RNG.range(1.15, 1.45).toFixed(2);
-    p0.startupContour = true;
-    p0.startupContourDepth = +RNG.range(0.22, 0.46).toFixed(2);
-    p0.startupContourJitter = +RNG.range(0.0, 0.01).toFixed(2);
-    p0.startupContourDirection = "up";
-    p0.startupContourQuantize = 10;
-    p0.startupContourPitchDepth = +RNG.range(0.08, 0.22).toFixed(2);
-    p0.startupContourTimbreDepth = +RNG.range(0.8, 1.0).toFixed(2);
-    p0.startupContourTimeScale = +RNG.range(0.82, 1.08).toFixed(2);
+    p0.textureAms = 8;
+    p0.textureSms = 2050;
+    p0.textureDms = 2950;
+    p0.textureVolume = 1.2;
+    p0.startupContour = false;
+    p0.startupContourDepth = 0;
+    p0.startupContourJitter = 0;
+    p0.startupContourDirection = "down";
+    p0.startupContourQuantize = 0;
+    p0.startupContourPitchDepth = 0;
+    p0.startupContourTimbreDepth = 0;
+    p0.startupContourTimeScale = 1.0;
+
+    p0.presetBaseHz = +RNG.range(95, 150).toFixed(1);
+    p0.presetStepMs = +RNG.range(28, 40).toFixed(1);
+    p0.presetPeriodScale = +RNG.range(6.8, 10.2).toFixed(2);
+    p0.presetEchoes = Math.round(RNG.range(2, 4));
+    p0.presetEchoDelayMs = +RNG.range(58, 86).toFixed(1);
+    p0.presetEchoDecay = +RNG.range(0.46, 0.68).toFixed(2);
+    p0.presetBits = Math.round(RNG.range(6, 8));
+    p0.presetPulseWidth = +RNG.range(0.44, 0.58).toFixed(2);
 
     const presetVoices = [p0];
-
-    if (v > 0.55) {
-      p0.baseHz = clamp(p0.baseHz + Math.round(RNG.range(10, 70)), 80, 2200);
-      p0.clockRate = +clamp(p0.clockRate + RNG.range(0.2, 1.2), 0.2, 20).toFixed(2);
-    }
-    if (v > 0.78) {
-      p0.pwm = +clamp(p0.pwm + RNG.range(0.03, 0.12), 0.05, 0.95).toFixed(2);
-      p0.startupContourDepth = +clamp(p0.startupContourDepth + RNG.range(0.04, 0.18), 0, 1).toFixed(2);
-      p0.startupContourPitchDepth = +clamp(p0.startupContourPitchDepth + RNG.range(0.01, 0.06), 0, 1).toFixed(2);
-    }
     presetVoices.forEach((p) => {
       normalizeTextureEnvelope(p);
       normalizeBassEnvelope(p);
@@ -687,7 +696,45 @@
     return { input, output, setAmount };
   }
 
+  function makeBitCrusherShaper(ctx, bits = 7) {
+    const input = ctx.createGain();
+    const shaper = ctx.createWaveShaper();
+    const output = ctx.createGain();
+    input.connect(shaper);
+    shaper.connect(output);
+
+    function setBits(b) {
+      const bitDepth = clamp(Math.round(b), 2, 16);
+      const steps = Math.pow(2, bitDepth - 1);
+      const curve = new Float32Array(4096);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * 2 - 1;
+        curve[i] = Math.round(x * steps) / steps;
+      }
+      shaper.curve = curve;
+      shaper.oversample = "none";
+    }
+
+    setBits(bits);
+    return { input, output, setBits };
+  }
+
+  function makeStartupDistortoWave(ctx) {
+    const n = 32;
+    const real = new Float32Array(n);
+    const imag = new Float32Array(n);
+    // Bright odd-harmonic-heavy table inspired by Defender start-distorto character.
+    for (let k = 1; k < n; k++) {
+      const oddWeight = k % 2 ? 1.0 : 0.25;
+      const tilt = 1 / Math.pow(k, 0.85);
+      imag[k] = oddWeight * tilt;
+      real[k] = oddWeight * tilt * 0.08;
+    }
+    return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  }
+
   function createVoice(ctx, master, noiseBuf) {
+    const startDistortoWave = makeStartupDistortoWave(ctx);
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
     const oscSub = ctx.createOscillator();
@@ -795,6 +842,15 @@
     texturePostGain.gain.value = 1.0;
     const noisePostGain = ctx.createGain();
     noisePostGain.gain.value = 1.0;
+    const presetHP = ctx.createBiquadFilter();
+    presetHP.type = "highpass";
+    presetHP.frequency.value = 90;
+    const presetLP = ctx.createBiquadFilter();
+    presetLP.type = "lowpass";
+    presetLP.frequency.value = 10000;
+    const presetCrusher = makeBitCrusherShaper(ctx, 7);
+    const presetGain = ctx.createGain();
+    presetGain.gain.value = 0.0;
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
@@ -828,6 +884,14 @@
     noiseBoomGain.connect(noisePostGain);
     noiseRingGain.connect(noisePostGain);
     noisePostGain.connect(panner);
+    const presetOsc = ctx.createOscillator();
+    presetOsc.setPeriodicWave(startDistortoWave);
+    presetOsc.frequency.value = 140;
+    presetOsc.connect(presetHP);
+    presetHP.connect(presetLP);
+    presetLP.connect(presetCrusher.input);
+    presetCrusher.output.connect(presetGain);
+    presetGain.connect(panner);
 
     const spatialBands = [];
     SPATIAL_CENTERS.forEach((fc) => {
@@ -927,6 +991,7 @@
     gateLfo.start();
     noiseBoomOsc.start();
     noiseRingOsc.start();
+    presetOsc.start();
 
     oscA.start();
     oscB.start();
@@ -940,6 +1005,7 @@
     let bassGateUntil = 0;
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
+    let presetGateUntil = 0;
     const sustainSpatialPhase = Math.random() * Math.PI * 2;
     const sustainSpatialRate = lerp(0.045, 0.12, Math.random());
     const sustainSpatialDepth = lerp(0.55, 1.0, Math.random());
@@ -959,6 +1025,43 @@
       node.gain.linearRampToValueAtTime(peak, t + a);
       node.gain.setValueAtTime(peak, t + a + s);
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
+    }
+
+    function triggerPresetStartup(p, t, level) {
+      const steps = DEFENDER_STARTUP_DISTORTO;
+      const stepMs = clamp(p.presetStepMs ?? 34, 12, 120);
+      const baseHz = clamp(p.presetBaseHz ?? 110, 40, 420);
+      const scale = clamp(p.presetPeriodScale ?? 8.4, 0.8, 24.0);
+      const echoes = clamp(Math.round(p.presetEchoes ?? 3), 1, 6);
+      const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 220) / 1000;
+      const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.95);
+      const pulseWidth = clamp(p.presetPulseWidth ?? 0.5, 0.12, 0.88);
+      const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
+
+      const totalSec = (steps.length * stepMs) / 1000 + (echoes - 1) * echoDelay;
+      presetGateUntil = t + totalSec;
+      triggerSpatialOneShot(totalSec, t);
+
+      const wave = makePWMWave(ctx, pulseWidth);
+      presetOsc.setPeriodicWave(wave);
+      presetCrusher.setBits(bitDepth);
+
+      presetOsc.frequency.cancelScheduledValues(t);
+      presetGain.gain.cancelScheduledValues(t);
+      presetGain.gain.setValueAtTime(0, t);
+
+      for (let e = 0; e < echoes; e++) {
+        const t0 = t + e * echoDelay;
+        const echoLevel = level * Math.pow(echoDecay, e);
+        for (let i = 0; i < steps.length; i++) {
+          const ti = t0 + (i * stepMs) / 1000;
+          const periodValue = steps[i];
+          const hz = clamp(baseHz + periodValue * scale, 40, 8000);
+          presetOsc.frequency.setValueAtTime(hz, ti);
+          presetGain.gain.setValueAtTime(echoLevel, ti);
+        }
+      }
+      presetGain.gain.setValueAtTime(0, t + totalSec);
     }
 
     function scheduleDefenderStartupContour(p, t, isSingle, spread, baseRateHz) {
@@ -1096,7 +1199,8 @@
       const t = ctx.currentTime;
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
-      const isTexture = !isBass && !isNoise;
+      const isPresetStartup = p.presetEngine === "defender-startup";
+      const isTexture = !isBass && !isNoise && !isPresetStartup;
       const engineOn = !!p.engineEnabled;
       const clockRate = clamp(p.clockRate ?? 3.0, 0.2, 20);
       const gateDepth = clamp01(p.gateDepth ?? 0);
@@ -1109,6 +1213,7 @@
       const noiseGainValue = clamp(p.gain, 0, 1.5);
       const textureVolumeValue = clamp(p.textureVolume ?? 1.0, 0, 1.5);
       const noiseVolumeValue = clamp(p.noiseVolume ?? 1.0, 0, 1.5);
+      const presetLevel = clamp((p.textureVolume ?? 1.0) * (p.gain ?? 0.15) * 2.2, 0, 2.0);
 
       if (!engineOn) {
         gateBase.offset.setTargetAtTime(1.0, t, 0.04);
@@ -1270,6 +1375,29 @@
           }
           voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.04);
         }
+      }
+
+      if (isPresetStartup) {
+        mainGain.gain.setTargetAtTime(0, t, 0.03);
+        bassGain.gain.setTargetAtTime(0, t, 0.03);
+        bassPostGain.gain.setTargetAtTime(0, t, 0.03);
+        noisePostGain.gain.setTargetAtTime(0, t, 0.03);
+        texturePostGain.gain.setTargetAtTime(0, t, 0.03);
+        presetHP.frequency.setTargetAtTime(90, t, 0.04);
+        presetLP.frequency.setTargetAtTime(10000, t, 0.04);
+        presetGain.gain.setTargetAtTime(0, t, 0.02);
+        voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.02);
+
+        if (forceReplay && !muted) {
+          triggerPresetStartup(p, t, presetLevel);
+        } else if (forceTextureTrigger && !muted) {
+          triggerPresetStartup(p, t, presetLevel);
+        } else if (muted || t >= presetGateUntil) {
+          presetGain.gain.setTargetAtTime(0, t, 0.03);
+        }
+      } else {
+        presetGain.gain.setTargetAtTime(0, t, 0.04);
+        presetGateUntil = 0;
       }
 
       if (isNoise) {
