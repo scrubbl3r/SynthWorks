@@ -174,6 +174,32 @@
     BONV: { b0: 0x31, b1: 0x11, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x00, pattern: "BONSND", wave: "GSSQ2" },
     TRBV: { b0: 0x12, b1: 0x06, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x01, pattern: "TRBPAT", wave: "GS1_7" },
   };
+  const DEFENDER_GWAVE_ORDER = [
+    "HBDV",
+    "STDV",
+    "DP1V",
+    "XBV",
+    "BBSV",
+    "HBEV",
+    "PROTV",
+    "SPNRV",
+    "CLDWNV",
+    "SV3",
+    "ED10",
+    "ED12",
+    "ED17",
+    "BONV",
+    "TRBV",
+  ];
+  // Defa7 sound-script tables (timer ticks are 16 ms units).
+  const DEFENDER_SOUND_SCRIPTS = {
+    START1: [{ repeat: 1, delayTicks: 0x40, cmd: 0x0a }],
+    START2: [{ repeat: 1, delayTicks: 0x10, cmd: 0x0b }],
+    SMARTBOMB: [
+      { repeat: 6, delayTicks: 0x04, cmd: 0x11 },
+      { repeat: 1, delayTicks: 0x10, cmd: 0x17 },
+    ],
+  };
   const DEFENDER_ROM_BASE = 0xf800;
   const DEFENDER_ROM_ADDR = {
     RADSND: 0xfd9a,
@@ -1484,65 +1510,98 @@
       return new Float32Array(out.length ? out : [0]);
     }
 
-    function renderDefenderSmartbombPcm(p, level) {
+    function renderRomCommandPcm(cmd, p, level) {
       const romTiming = !!p.presetRomTiming;
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const bits = clamp(Math.round(p.presetBits ?? 7), 3, 12);
-      const baseHz = clamp(p.presetBaseHz ?? 95, 30, 260);
-      const pitchScale = clamp(95 / baseHz, 0.35, 2.8);
-      const burstCount = clamp(Math.round(p.presetEchoes ?? 6), 1, 10);
-      const burstGap = clamp((p.presetStepMs ?? 64) / 1000, 0.016, 0.25);
-      const tailDelay = clamp((p.presetEchoDelayMs ?? 256) / 1000, 0.03, 0.6);
-      const decay = clamp(p.presetEchoDecay ?? 0.78, 0.2, 0.98);
+      const stepMs = clamp(p.presetStepMs ?? 34, 8, 220);
+      const baseHz = clamp(p.presetBaseHz ?? 100, 25, 280);
+      const pitchScale = clamp(95 / baseHz, 0.2, 4.0);
+      const vectorName = (cmd >= 1 && cmd <= DEFENDER_GWAVE_ORDER.length)
+        ? DEFENDER_GWAVE_ORDER[cmd - 1]
+        : null;
 
-      const bon = renderRomGwaveVector("BONV", {
-        bitDepth: bits,
-        romTiming,
-        strictLoop,
-        cpuHz,
-        stepScale: ((p.presetStepMs ?? 64) / 22.0) * pitchScale,
-      });
-      const radio = renderRomRadio(bits, 2.2, Math.round(70 + baseHz * 0.6));
-      const totalSec = burstCount * burstGap + tailDelay + radio.length / ctx.sampleRate + 0.08;
-      const len = Math.max(1, Math.ceil(totalSec * ctx.sampleRate));
-      const out = new Float32Array(len);
-      const add = (at, src, amp) => {
-        const start = Math.floor(at * ctx.sampleRate);
-        for (let i = 0; i < src.length && start + i < out.length; i++) {
-          out[start + i] = clamp(out[start + i] + src[i] * amp, -1, 1);
-        }
-      };
-
-      for (let i = 0; i < burstCount; i++) {
-        add(i * burstGap, bon, level * Math.pow(decay, i));
+      if (vectorName) {
+        return renderRomGwaveVector(vectorName, {
+          bitDepth: bits,
+          romTiming,
+          strictLoop,
+          cpuHz,
+          stepScale: (stepMs / 22.0) * pitchScale,
+        });
       }
-      add(burstCount * burstGap + tailDelay, radio, level * 0.82);
+      if (cmd === 0x11) {
+        // BON2 handler routes to BONV on first trigger; use BONV as the base color.
+        return renderRomGwaveVector("BONV", {
+          bitDepth: bits,
+          romTiming,
+          strictLoop,
+          cpuHz,
+          stepScale: (stepMs / 22.0) * pitchScale,
+        });
+      }
+      if (cmd === 0x17) {
+        return renderRomRadio(bits, 2.8, Math.round(70 + baseHz * 0.55));
+      }
+      if (cmd === 0x18) {
+        // Hyper toggle loop approximation.
+        const len = Math.max(1, Math.floor(ctx.sampleRate * 0.42));
+        const out = new Float32Array(len);
+        let phase = 0;
+        const duty = Math.max(1, Math.floor(ctx.sampleRate / 1800));
+        let v = 1;
+        for (let i = 0; i < len; i++) {
+          if ((phase++ % duty) === 0) v = -v;
+          out[i] = v * 0.75;
+        }
+        return out;
+      }
+      // Unknown/special commands fallback to silence.
+      return new Float32Array([0]);
+    }
+
+    function renderSoundScriptPcm(script, p, level) {
+      if (!Array.isArray(script) || !script.length) return new Float32Array([0]);
+      const commandBursts = [];
+      let atSec = 0;
+      let maxEnd = 0;
+      for (let i = 0; i < script.length; i++) {
+        const step = script[i];
+        const repeat = clamp(Math.round(step.repeat ?? 1), 1, 16);
+        const gap = clamp((step.delayTicks ?? 1) * 0.016, 0.002, 3.0);
+        for (let r = 0; r < repeat; r++) {
+          const pcm = renderRomCommandPcm(step.cmd & 0xff, p, level);
+          commandBursts.push({ atSec, pcm, gain: 1.0 });
+          maxEnd = Math.max(maxEnd, atSec + pcm.length / ctx.sampleRate);
+          atSec += gap;
+        }
+      }
+      const out = new Float32Array(Math.max(1, Math.ceil((maxEnd + 0.02) * ctx.sampleRate)));
+      for (let i = 0; i < commandBursts.length; i++) {
+        const b = commandBursts[i];
+        const start = Math.floor(b.atSec * ctx.sampleRate);
+        for (let n = 0; n < b.pcm.length && start + n < out.length; n++) {
+          out[start + n] = clamp(out[start + n] + b.pcm[n] * b.gain, -1, 1);
+        }
+      }
       return out;
     }
 
+    function renderDefenderSmartbombPcm(p, level) {
+      return renderSoundScriptPcm(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level);
+    }
+
     function triggerPresetStartup(p, t, level) {
-      const stepMs = clamp(p.presetStepMs ?? 34, 12, 120);
-      const echoes = clamp(Math.round(p.presetEchoes ?? 3), 1, 6);
-      const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 220) / 1000;
-      const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.95);
-      const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
-      const romTiming = !!p.presetRomTiming;
-      const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
-      const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
-      const stepScale = stepMs / 22.0;
-      const basePcm = renderRomGwaveVector("STDV", {
-        bitDepth,
-        romTiming,
-        strictLoop,
-        cpuHz,
-        stepScale,
-      });
-      const baseDur = basePcm.length / ctx.sampleRate;
-      const totalSec = baseDur + (echoes - 1) * echoDelay;
+      // Startup script from defa7: ST1SND (and optional ST2SND when echoes > 1).
+      const script = (p.presetEchoes ?? 1) > 1
+        ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
+        : DEFENDER_SOUND_SCRIPTS.START1;
+      const basePcm = renderSoundScriptPcm(script, p, level);
+      const totalSec = basePcm.length / ctx.sampleRate;
 
       presetGateUntil = t + totalSec;
       triggerSpatialOneShot(totalSec, t);
@@ -1559,17 +1618,8 @@
         presetSrc = null;
       }
 
-      const mix = new Float32Array(Math.max(1, Math.ceil(totalSec * ctx.sampleRate)));
-      for (let e = 0; e < echoes; e++) {
-        const echoLevel = level * Math.pow(echoDecay, e);
-        const start = Math.floor(e * echoDelay * ctx.sampleRate);
-        for (let i = 0; i < basePcm.length && start + i < mix.length; i++) {
-          mix[start + i] += basePcm[i] * echoLevel;
-        }
-      }
-      for (let i = 0; i < mix.length; i++) mix[i] = clamp(mix[i], -1, 1);
-      const buf = ctx.createBuffer(1, mix.length, ctx.sampleRate);
-      buf.getChannelData(0).set(mix);
+      const buf = ctx.createBuffer(1, basePcm.length, ctx.sampleRate);
+      buf.getChannelData(0).set(basePcm);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(presetInput);
