@@ -479,6 +479,23 @@ body{
   font-size:16.5px;
 }
 
+.randomizePresets{
+  width:100%;
+  margin-top:15px;
+  padding-left:2ch;
+}
+
+.randomizePresetRow{
+  display:grid;
+  grid-template-columns: 90px 1fr;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  font-size:16px;
+  text-transform:uppercase;
+  letter-spacing:0.7px;
+}
+
 .randomizeLeft .panelTitle{
   font-size:21px;
 }

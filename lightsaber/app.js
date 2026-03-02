@@ -5,7 +5,9 @@
   const voiceGrid = document.getElementById("voiceGrid");
   const controls = document.getElementById("controls");
   const activeLabel = document.getElementById("activeLabel");
+  const randomizeModeSelect = document.getElementById("randomizeModeSelect");
   const randomizeModesWrap = document.getElementById("randomizeModes");
+  const randomizePresetsWrap = document.getElementById("randomizePresets");
   const texturePlayBtn = document.getElementById("texturePlayBtn");
   const bassPlayBtn = document.getElementById("bassPlayBtn");
   const noisePlayBtn = document.getElementById("noisePlayBtn");
@@ -265,6 +267,13 @@
 
     if (!modePool.length) return fallback;
     return { modePool, behaviorByMode };
+  }
+
+  function syncRandomizeModeUI() {
+    const mode = randomizeModeSelect ? randomizeModeSelect.value : "voices";
+    const voicesMode = mode !== "presets";
+    if (randomizeModesWrap) randomizeModesWrap.style.display = voicesMode ? "" : "none";
+    if (randomizePresetsWrap) randomizePresetsWrap.style.display = voicesMode ? "none" : "";
   }
 
   function randomizeVoice(p, randomizeConfig) {
@@ -2039,7 +2048,12 @@
     renderVoices();
     ensureRandomizeLockUI();
     attachControlHandlers();
+    syncRandomizeModeUI();
     syncControls();
+  }
+
+  if (randomizeModeSelect) {
+    randomizeModeSelect.addEventListener("change", syncRandomizeModeUI);
   }
 
   regenBtn.addEventListener("click", regenerate);

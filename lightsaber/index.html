@@ -47,6 +47,14 @@
               <label><input type="checkbox" data-randomize-behavior="noise:oneshot" checked /> One-shot</label>
             </div>
           </div>
+          <div class="randomizePresets" id="randomizePresets" style="display:none;">
+            <label class="randomizePresetRow">
+              <span>Preset</span>
+              <select id="presetFamilySelect" class="randomizeModeSelect" aria-label="Preset family">
+                <option value="defender-startup" selected>defender-startup</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div class="randomizeRight">
           <button id="regenBtn" class="regen randomizeAction" type="button">Randomize</button>
