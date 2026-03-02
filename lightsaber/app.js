@@ -211,8 +211,8 @@
     START1: [{ repeat: 1, delayTicks: 0x40, cmd: 0x0a }],
     START2: [{ repeat: 1, delayTicks: 0x10, cmd: 0x0b }],
     SMARTBOMB: [
-      { repeat: 6, delayTicks: 0x04, cmd: 0x11 },
-      { repeat: 1, delayTicks: 0x10, cmd: 0x12 },
+      { repeat: 6, delayTicks: 0x04, cmd: 0x12 },
+      { repeat: 1, delayTicks: 0x10, cmd: 0x13 },
     ],
   };
   const DEFENDER_VARI_VECTORS = [
@@ -236,25 +236,26 @@
     0x0a: "GWAVE #10 SV3 (START1 table)",
     0x0b: "GWAVE #11 ED10 (START2 table)",
     0x0c: "GWAVE #12 ED12",
-    0x0d: "SP1 (spinner #1)",
-    0x0e: "BG1",
-    0x0f: "BG2INC",
-    0x10: "LITE",
-    0x11: "BON2 / smartbomb core",
-    0x12: "BGEND / smartbomb tail",
-    0x13: "TURBO",
-    0x14: "APPEAR",
-    0x15: "THRUST",
-    0x16: "CANNON",
-    0x17: "RADIO",
-    0x18: "HYPER",
-    0x19: "SCREAM",
-    0x1a: "ORGANT (tune)",
-    0x1b: "ORGANN (note)",
-    0x1c: "VARI SAW",
-    0x1d: "VARI FOSHIT",
-    0x1e: "VARI QUASAR",
-    0x1f: "VARI CABSHK",
+    0x0d: "GWAVE #13 ED17",
+    0x0e: "SP1 (spinner #1)",
+    0x0f: "BG1",
+    0x10: "BG2INC",
+    0x11: "LITE",
+    0x12: "BON2 / smartbomb core",
+    0x13: "BGEND",
+    0x14: "TURBO",
+    0x15: "APPEAR",
+    0x16: "THRUST",
+    0x17: "CANNON",
+    0x18: "RADIO",
+    0x19: "HYPER",
+    0x1a: "SCREAM",
+    0x1b: "ORGANT (tune)",
+    0x1c: "ORGANN (note)",
+    0x1d: "VARI SAW",
+    0x1e: "VARI FOSHIT",
+    0x1f: "VARI QUASAR",
+    0x20: "VARI CABSHK",
   };
   const DEFENDER_ROM_BASE = 0xf800;
   const DEFENDER_ROM_ADDR = {
@@ -1467,6 +1468,7 @@
     let noiseGateOn = false;
     let oneShotCooldownUntil = 0;
     let presetGateUntil = 0;
+    let bon2Active = false;
     const sustainSpatialPhase = Math.random() * Math.PI * 2;
     const sustainSpatialRate = lerp(0.045, 0.12, Math.random());
     const sustainSpatialDepth = lerp(0.55, 1.0, Math.random());
@@ -1924,7 +1926,8 @@
       const stepMs = clamp(p.presetStepMs ?? 34, 8, 220);
       const baseHz = clamp(p.presetBaseHz ?? 100, 25, 280);
       const pitchScale = clamp(95 / baseHz, 0.2, 4.0);
-      const vectorName = (cmd >= 1 && cmd <= DEFENDER_GWAVE_ORDER.length)
+      // IRQ direct GWAVE dispatch covers 0x01..0x0D (after DECA/CMPA #$0C in ROM).
+      const vectorName = (cmd >= 1 && cmd <= 0x0d)
         ? DEFENDER_GWAVE_ORDER[cmd - 1]
         : null;
 
@@ -1937,20 +1940,7 @@
           stepScale: (stepMs / 22.0) * pitchScale,
         });
       }
-      if (cmd === 0x11) {
-        // BON2 is script-driven; as a standalone event it should be a short noisy burst,
-        // not the full long BONV table render.
-        const core = renderRomGwaveVector("BONV", {
-          bitDepth: bits,
-          romTiming,
-          strictLoop,
-          cpuHz,
-          stepScale: (stepMs / 22.0) * pitchScale,
-        });
-        const burstSec = clamp((stepMs / 1000) * 1.1, 0.06, 0.22);
-        return trimPcmWindow(core, burstSec, 0.008);
-      }
-      if (cmd === 0x0d) {
+      if (cmd === 0x0e) {
         // SP1 spinner family accent.
         return renderRomGwaveVector("SPNRV", {
           bitDepth: bits,
@@ -1960,30 +1950,49 @@
           stepScale: (stepMs / 24.0) * pitchScale * 0.9,
         });
       }
-      if (cmd === 0x0e) {
-        // BG1 low background noise bed.
-        return renderNoiseRoutine({
-          decay: 0x01,
-          period: 0x0030,
-          amp: 0xb0,
-          cycnt: 0x38,
-          nfflg: 0,
-          maxSec: 1.6,
+      if (cmd === 0x0f) {
+        // BG1 low filtered-noise bed.
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0x01,
+          fdf: 0,
+          dsflg: 0,
+          sampleCount: 1200,
+          maxSec: 1.5,
         });
       }
-      if (cmd === 0x0f) {
-        // BG2INC brighter/rising background variant.
-        return renderNoiseRoutine({
-          decay: 0x01,
-          period: 0x0020,
-          amp: 0xd0,
-          cycnt: 0x30,
-          nfflg: 1,
-          maxSec: 1.4,
+      if (cmd === 0x10) {
+        // BG2INC is a control update in ROM; expose a short turbine accent for audition.
+        return renderRomGwaveVector("TRBV", {
+          bitDepth: bits,
+          romTiming,
+          strictLoop,
+          cpuHz,
+          stepScale: (stepMs / 18.0) * pitchScale,
         });
+      }
+      if (cmd === 0x11) {
+        // LITE
+        return renderLitenRoutine(0x01, 0x01, 0x03, 2.0);
       }
       if (cmd === 0x12) {
-        // BGEND / smartbomb tail: noisy crushed decay.
+        // BON2: first hit loads BONV, subsequent hits continue with a tighter burst.
+        const core = renderRomGwaveVector("BONV", {
+          bitDepth: bits,
+          romTiming,
+          strictLoop,
+          cpuHz,
+          stepScale: (stepMs / 22.0) * pitchScale,
+        });
+        const burstSec = bon2Active
+          ? clamp((stepMs / 1000) * 0.85, 0.05, 0.18)
+          : clamp((stepMs / 1000) * 1.15, 0.07, 0.28);
+        bon2Active = true;
+        return trimPcmWindow(core, burstSec, 0.01);
+      }
+      if (cmd === 0x13) {
+        // BGEND: control/end command; emit a noisy tail when a BON2 chain is active.
+        if (!bon2Active) return new Float32Array([0]);
+        bon2Active = false;
         return renderFilteredNoiseRoutine({
           fmaxInit: 0xff,
           fdf: 1,
@@ -1992,10 +2001,45 @@
           maxSec: 1.35,
         });
       }
+      if (cmd === 0x14) {
+        // TURBO
+        return renderNoiseRoutine({
+          decay: 0x01,
+          period: 0x0001,
+          amp: 0xff,
+          cycnt: 0x20,
+          nfflg: 1,
+          maxSec: 1.9,
+        });
+      }
+      if (cmd === 0x15) {
+        // APPEAR
+        return renderLitenRoutine(0xc0, 0xfe, 0x10, 2.0);
+      }
+      if (cmd === 0x16) {
+        // THRUST (steady filtered noise bed)
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0x03,
+          fdf: 0,
+          dsflg: 0,
+          sampleCount: 1100,
+          maxSec: 1.5,
+        });
+      }
       if (cmd === 0x17) {
-        return renderRomRadio(bits, 2.8, Math.round(70 + baseHz * 0.55));
+        // CANNON (distorted filtered noise transient)
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0xff,
+          fdf: 1,
+          dsflg: 1,
+          sampleCount: 1000,
+          maxSec: 1.7,
+        });
       }
       if (cmd === 0x18) {
+        return renderRomRadio(bits, 2.8, Math.round(70 + baseHz * 0.55));
+      }
+      if (cmd === 0x19) {
         // Hyper toggle loop approximation.
         const len = Math.max(1, Math.floor(ctx.sampleRate * 0.42));
         const out = new Float32Array(len);
@@ -2008,56 +2052,17 @@
         }
         return out;
       }
-      if (cmd === 0x10) {
-        // LITE
-        return renderLitenRoutine(0x01, 0x01, 0x03, 2.0);
-      }
-      if (cmd === 0x13) {
-        // TURBO
-        return renderNoiseRoutine({
-          decay: 0x01,
-          period: 0x0001,
-          amp: 0xff,
-          cycnt: 0x20,
-          nfflg: 1,
-          maxSec: 1.9,
-        });
-      }
-      if (cmd === 0x14) {
-        // APPEAR
-        return renderLitenRoutine(0xc0, 0xfe, 0x10, 2.0);
-      }
-      if (cmd === 0x15) {
-        // THRUST (steady filtered noise bed)
-        return renderFilteredNoiseRoutine({
-          fmaxInit: 0x03,
-          fdf: 0,
-          dsflg: 0,
-          sampleCount: 1100,
-          maxSec: 1.5,
-        });
-      }
-      if (cmd === 0x16) {
-        // CANNON (distorted filtered noise transient)
-        return renderFilteredNoiseRoutine({
-          fmaxInit: 0xff,
-          fdf: 1,
-          dsflg: 1,
-          sampleCount: 1000,
-          maxSec: 1.7,
-        });
-      }
-      if (cmd === 0x19) {
+      if (cmd === 0x1a) {
         return renderScreamPcm(1.35);
       }
-      if (cmd === 0x1a) {
+      if (cmd === 0x1b) {
         return renderOrganTunePcm(1.9);
       }
-      if (cmd === 0x1b) {
+      if (cmd === 0x1c) {
         return renderOrganNotePcm(1.0, 4);
       }
-      if (cmd >= 0x1c && cmd <= 0x3f) {
-        const idx = (cmd - 0x1c) % DEFENDER_VARI_VECTORS.length;
+      if (cmd >= 0x1d && cmd <= 0x3f) {
+        const idx = (cmd - 0x1d) % DEFENDER_VARI_VECTORS.length;
         const vec = DEFENDER_VARI_VECTORS[idx];
         return renderVariVectorPcm(vec, bits, 1.8);
       }
@@ -2173,6 +2178,7 @@
     }
 
     function triggerPresetStartup(p, t, level) {
+      bon2Active = false;
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
@@ -2237,6 +2243,7 @@
     }
 
     function triggerPresetSmartbomb(p, t, level) {
+      bon2Active = false;
       const hpf = clamp(p.presetHPF ?? 38, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 9500, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
@@ -3668,7 +3675,7 @@
       const opt = document.createElement("option");
       const hex = `0x${cmd.toString(16).padStart(2, "0").toUpperCase()}`;
       let label = DEFENDER_AUDITION_LABELS[cmd];
-      if (!label && cmd >= 0x20) label = "VARI (extended)";
+      if (!label && cmd >= 0x1d) label = "VARI (extended)";
       if (!label) label = "Unknown";
       opt.value = hex;
       opt.textContent = `${hex} ${label}`;
