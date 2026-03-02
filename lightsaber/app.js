@@ -1654,6 +1654,21 @@
       return new Float32Array(out.length ? out : [0]);
     }
 
+    function trimPcmWindow(pcm, maxSec, fadeOutSec = 0.01) {
+      if (!pcm || !pcm.length) return new Float32Array([0]);
+      const maxSamples = Math.max(1, Math.floor(Math.max(0.001, maxSec) * ctx.sampleRate));
+      const len = Math.min(pcm.length, maxSamples);
+      const out = new Float32Array(len);
+      out.set(pcm.subarray(0, len));
+      const fadeSamples = Math.min(len, Math.max(1, Math.floor(Math.max(0, fadeOutSec) * ctx.sampleRate)));
+      for (let i = 0; i < fadeSamples; i++) {
+        const idx = len - 1 - i;
+        const g = i / Math.max(1, fadeSamples - 1);
+        out[idx] *= g;
+      }
+      return out;
+    }
+
     function stepDefenderRand(state) {
       let a = state.lo & 0xff;
       let carry = 0;
@@ -1923,14 +1938,17 @@
         });
       }
       if (cmd === 0x11) {
-        // BON2 handler routes to BONV on first trigger; use BONV as the base color.
-        return renderRomGwaveVector("BONV", {
+        // BON2 is script-driven; as a standalone event it should be a short noisy burst,
+        // not the full long BONV table render.
+        const core = renderRomGwaveVector("BONV", {
           bitDepth: bits,
           romTiming,
           strictLoop,
           cpuHz,
           stepScale: (stepMs / 22.0) * pitchScale,
         });
+        const burstSec = clamp((stepMs / 1000) * 1.1, 0.06, 0.22);
+        return trimPcmWindow(core, burstSec, 0.008);
       }
       if (cmd === 0x0d) {
         // SP1 spinner family accent.
