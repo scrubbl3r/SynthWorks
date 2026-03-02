@@ -995,6 +995,28 @@
     };
   }
 
+  function parseOrganTunes(rom, addr) {
+    const tunes = [];
+    let p = addr;
+    let guard = 0;
+    while (guard++ < 128) {
+      const len = defenderRomByte(rom, p) & 0xff;
+      p += 1;
+      if (len === 0) break;
+      const count = Math.floor(len / 4);
+      const entries = [];
+      for (let i = 0; i < count; i++) {
+        const oscMask = defenderRomByte(rom, p) & 0xff;
+        const delay = defenderRomByte(rom, p + 1) & 0xff;
+        const dur = ((defenderRomByte(rom, p + 2) & 0xff) << 8) | (defenderRomByte(rom, p + 3) & 0xff);
+        entries.push({ oscMask, delay, dur });
+        p += 4;
+      }
+      tunes.push(entries);
+    }
+    return tunes;
+  }
+
   function buildDefenderRomTables() {
     const rom = loadDefenderRomBlob();
     if (!rom) return null;
@@ -1046,7 +1068,7 @@
       waves,
       vectors,
       radsnd: readRomBytes(rom, DEFENDER_ROM_ADDR.RADSND, 16),
-      organTunes: parseOrganTunes(DEFENDER_ROM_ADDR.ORGTAB),
+      organTunes: parseOrganTunes(rom, DEFENDER_ROM_ADDR.ORGTAB),
       nottab: readRomBytes(rom, DEFENDER_ROM_ADDR.NOTTAB, 12),
     };
   }
@@ -3496,24 +3518,3 @@
   init();
   updateAuditionHexReadout();
 })();
-    function parseOrganTunes(addr) {
-      const tunes = [];
-      let p = addr;
-      let guard = 0;
-      while (guard++ < 128) {
-        const len = defenderRomByte(rom, p) & 0xff;
-        p += 1;
-        if (len === 0) break;
-        const count = Math.floor(len / 4);
-        const entries = [];
-        for (let i = 0; i < count; i++) {
-          const oscMask = defenderRomByte(rom, p) & 0xff;
-          const delay = defenderRomByte(rom, p + 1) & 0xff;
-          const dur = ((defenderRomByte(rom, p + 2) & 0xff) << 8) | (defenderRomByte(rom, p + 3) & 0xff);
-          entries.push({ oscMask, delay, dur });
-          p += 4;
-        }
-        tunes.push(entries);
-      }
-      return tunes;
-    }
