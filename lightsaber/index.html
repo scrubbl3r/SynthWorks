@@ -52,6 +52,7 @@
               <span>Preset</span>
               <select id="presetFamilySelect" class="randomizeModeSelect" aria-label="Preset family">
                 <option value="defender-startup" selected>defender-startup</option>
+                <option value="defender-smartbomb">smartbomb</option>
               </select>
             </label>
           </div>
@@ -151,6 +152,12 @@
             <button id="texturePlayBtn" class="miniActionBtn" type="button">RE-PLAY</button>
           </div>
           <output data-out="textureBehavior"></output>
+        </label>
+
+        <label class="row" data-mode="texture" data-preset-startup="1">
+          <span>Startup Base</span>
+          <input type="range" min="40" max="300" step="0.1" data-param="presetBaseHz" />
+          <output data-out="presetBaseHz"></output>
         </label>
 
         <label class="row" data-mode="texture" data-preset-startup="1">

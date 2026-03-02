@@ -506,9 +506,77 @@
     return presetVoices;
   }
 
+  function buildDefenderSmartbombPreset() {
+    const mk = () => {
+      const p = defaults();
+      p.gain = 0.15;
+      p.textureVolume = 1.0;
+      p.noiseVolume = 1.0;
+      p.bassVolume = 1.0;
+      p.stereoWidth = 0.5;
+      return p;
+    };
+
+    // ROM table clue from defa7: SBSND = six fast repeats then a delayed tail.
+    const p0 = mk();
+    p0.mode = "texture";
+    p0.presetEngine = "defender-smartbomb";
+    p0.textureBehavior = "oneshot";
+    p0.engineEnabled = false;
+    p0.clockRate = 1.0;
+    p0.gateDepth = 0.0;
+    p0.stepAmount = 0.0;
+    p0.delayMix = 0.0;
+    p0.delayTime = 0.08;
+    p0.feedback = 0.0;
+    p0.oscType = "square";
+    p0.singleOsc = true;
+    p0.pwmOn = false;
+    p0.pwm = 0.5;
+    p0.oscRate = 1.0;
+    p0.baseHz = 120;
+    p0.unisonSpread = 0;
+    p0.detune = 0;
+    p0.subMix = 0.0;
+    p0.drive = 0.0;
+    p0.filterCutoff = 12000;
+    p0.filterQ = 0.8;
+    p0.edge = 0.0;
+    p0.noiseMix = 0.0;
+    p0.textureAms = 5;
+    p0.textureSms = 900;
+    p0.textureDms = 2400;
+    p0.textureVolume = 1.25;
+
+    p0.presetBaseHz = 95.0;
+    p0.presetSweep = 1.0;
+    p0.presetRomTiming = false;
+    p0.presetStrictRomLoop = false;
+    p0.presetCpuHz = 894886;
+    p0.presetStepMs = 64.0;      // 0x04 * 16ms
+    p0.presetPeriodScale = 1.0;
+    p0.presetEchoes = 6;         // first smartbomb stage repeat count
+    p0.presetEchoDelayMs = 256.0; // 0x10 * 16ms delayed tail hint
+    p0.presetEchoDecay = 0.78;
+    p0.presetBits = 7;
+    p0.presetPulseWidth = 0.5;
+    p0.presetHPF = 38;
+    p0.presetLPF = 9500;
+
+    const presetVoices = [p0];
+    presetVoices.forEach((p) => {
+      normalizeTextureEnvelope(p);
+      normalizeBassEnvelope(p);
+      normalizeNoiseEnvelope(p);
+    });
+    return presetVoices;
+  }
+
   function applyPresetFromSelection() {
     const family = presetFamilySelect ? presetFamilySelect.value : "defender-startup";
-    const built = family === "defender-startup" ? buildDefenderStartupPreset() : buildDefenderStartupPreset();
+    const built = family === "defender-smartbomb"
+      ? buildDefenderSmartbombPreset()
+      : buildDefenderStartupPreset();
     for (let i = 0; i < state.voiceParams.length; i++) {
       if (i < built.length) {
         state.activeTracks[i] = true;
@@ -1070,6 +1138,13 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
+    function quantizeSample(x, bitDepth) {
+      const qBits = clamp(Math.round(bitDepth), 3, 12);
+      const qLevels = Math.pow(2, qBits) - 1;
+      const u = clamp(Math.round(((x + 1) * 0.5) * qLevels), 0, qLevels);
+      return (u / qLevels) * 2 - 1;
+    }
+
     function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886, strictLoop = true, bitDepth = 8) {
       // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
       const gccnt = 2;
@@ -1090,12 +1165,6 @@
       const relaxedPeriodCycles = 5.0;
       const relaxedSampleOverheadCycles = 23.0;
       const strictFixedCyclesPerSample = 18.0;
-      const qBits = clamp(Math.round(bitDepth), 3, 12);
-      const qLevels = Math.pow(2, qBits) - 1;
-      const quantize = (x) => {
-        const u = clamp(Math.round(((x + 1) * 0.5) * qLevels), 0, qLevels);
-        return (u / qLevels) * 2 - 1;
-      };
       const out = [];
       for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
         const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
@@ -1110,12 +1179,65 @@
         }
         for (let c = 0; c < gccnt; c++) {
           for (let s = 0; s < wave.length; s++) {
-            const sample = quantize(wave[s]);
+            const sample = quantizeSample(wave[s], bitDepth);
             for (let h = 0; h < hold; h++) out.push(sample);
           }
         }
       }
       return new Float32Array(out);
+    }
+
+    function renderDefenderSmartbombPcm(p, level) {
+      const sr = ctx.sampleRate;
+      const burstInterval = clamp((p.presetStepMs ?? 64) / 1000, 0.016, 0.2);
+      const burstCount = clamp(Math.round(p.presetEchoes ?? 6), 1, 10);
+      const tailDelay = clamp((p.presetEchoDelayMs ?? 256) / 1000, 0.03, 0.5);
+      const decay = clamp(p.presetEchoDecay ?? 0.78, 0.2, 0.98);
+      const bits = clamp(Math.round(p.presetBits ?? 7), 3, 12);
+      const baseHz = clamp(p.presetBaseHz ?? 95, 20, 260);
+
+      const burstDur = 0.11;
+      const tailDur = 1.2;
+      const totalSec = burstCount * burstInterval + tailDelay + tailDur;
+      const len = Math.max(1, Math.ceil(totalSec * sr));
+      const out = new Float32Array(len);
+
+      const add = (idx, val) => {
+        if (idx < 0 || idx >= len) return;
+        out[idx] = clamp(out[idx] + val, -1, 1);
+      };
+
+      for (let b = 0; b < burstCount; b++) {
+        const t0 = b * burstInterval;
+        const amp = level * Math.pow(decay, b);
+        const phaseJitter = Math.random() * Math.PI * 2;
+        const nSamples = Math.floor(burstDur * sr);
+        for (let n = 0; n < nSamples; n++) {
+          const t = n / sr;
+          const env = Math.exp(-t * 26);
+          const f = baseHz * (1.9 - 0.9 * (t / burstDur));
+          const tone = Math.sin(Math.PI * 2 * f * t + phaseJitter) * 0.58;
+          const fizz = (Math.random() * 2 - 1) * 0.68 * env;
+          const crack = Math.sign(Math.sin(Math.PI * 2 * (f * 6.2) * t + phaseJitter)) * 0.12 * env;
+          const sample = quantizeSample((tone + fizz + crack) * env * amp, bits);
+          add(Math.floor((t0 + t) * sr), sample);
+        }
+      }
+
+      const tailStart = burstCount * burstInterval + tailDelay;
+      const tailSamples = Math.floor(tailDur * sr);
+      const tailPhase = Math.random() * Math.PI * 2;
+      for (let n = 0; n < tailSamples; n++) {
+        const t = n / sr;
+        const env = Math.exp(-t * 2.3);
+        const f = baseHz * (0.8 - 0.5 * (t / tailDur));
+        const rumble = Math.sin(Math.PI * 2 * f * t + tailPhase) * 0.55;
+        const hiss = (Math.random() * 2 - 1) * 0.16 * env;
+        const sample = quantizeSample((rumble + hiss) * env * level * 0.86, bits);
+        add(Math.floor((tailStart + t) * sr), sample);
+      }
+
+      return out;
     }
 
     function triggerPresetStartup(p, t, level) {
@@ -1164,6 +1286,35 @@
       src.start(t);
       presetSrc = src;
 
+      presetGain.gain.setValueAtTime(1.0, t);
+      presetGain.gain.linearRampToValueAtTime(0.0, t + totalSec);
+    }
+
+    function triggerPresetSmartbomb(p, t, level) {
+      const hpf = clamp(p.presetHPF ?? 38, 20, 4000);
+      const lpf = clamp(p.presetLPF ?? 9500, 1200, 16000);
+      const mix = renderDefenderSmartbombPcm(p, level);
+      const totalSec = mix.length / ctx.sampleRate;
+      presetGateUntil = t + totalSec;
+      triggerSpatialOneShot(totalSec, t);
+
+      presetHP.frequency.setTargetAtTime(hpf, t, 0.01);
+      presetLP.frequency.setTargetAtTime(lpf, t, 0.01);
+      presetGain.gain.cancelScheduledValues(t);
+      presetGain.gain.setValueAtTime(0, t);
+      if (presetSrc) {
+        try { presetSrc.stop(); } catch (_) {}
+        try { presetSrc.disconnect(); } catch (_) {}
+        presetSrc = null;
+      }
+
+      const buf = ctx.createBuffer(1, mix.length, ctx.sampleRate);
+      buf.getChannelData(0).set(mix);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(presetInput);
+      src.start(t);
+      presetSrc = src;
       presetGain.gain.setValueAtTime(1.0, t);
       presetGain.gain.linearRampToValueAtTime(0.0, t + totalSec);
     }
@@ -1304,7 +1455,9 @@
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
       const isPresetStartup = p.presetEngine === "defender-startup";
-      const isTexture = !isBass && !isNoise && !isPresetStartup;
+      const isPresetSmartbomb = p.presetEngine === "defender-smartbomb";
+      const isPresetEngine = isPresetStartup || isPresetSmartbomb;
+      const isTexture = !isBass && !isNoise && !isPresetEngine;
       const engineOn = !!p.engineEnabled;
       const clockRate = clamp(p.clockRate ?? 3.0, 0.2, 20);
       const gateDepth = clamp01(p.gateDepth ?? 0);
@@ -1481,7 +1634,7 @@
         }
       }
 
-      if (isPresetStartup) {
+      if (isPresetEngine) {
         mainGain.gain.setTargetAtTime(0, t, 0.03);
         bassGain.gain.setTargetAtTime(0, t, 0.03);
         bassPostGain.gain.setTargetAtTime(0, t, 0.03);
@@ -1493,9 +1646,11 @@
         voiceOut.gain.setTargetAtTime(muted ? 0 : 1, t, 0.02);
 
         if (forceReplay && !muted) {
-          triggerPresetStartup(p, t, presetLevel);
+          if (isPresetSmartbomb) triggerPresetSmartbomb(p, t, presetLevel);
+          else triggerPresetStartup(p, t, presetLevel);
         } else if (forceTextureTrigger && !muted) {
-          triggerPresetStartup(p, t, presetLevel);
+          if (isPresetSmartbomb) triggerPresetSmartbomb(p, t, presetLevel);
+          else triggerPresetStartup(p, t, presetLevel);
         } else if (muted || t >= presetGateUntil) {
           presetGain.gain.setTargetAtTime(0, t, 0.03);
         }
@@ -2335,22 +2490,39 @@
     const rows = controls.querySelectorAll("[data-mode]");
     const p = state.voiceParams[state.active] || {};
     const isPresetStartup = p.presetEngine === "defender-startup";
-    if (isPresetStartup) {
-      const allowed = new Set([
-        "mode",
-        "presetRomTiming",
-        "presetCpuHz",
-        "presetStepMs",
-        "presetEchoes",
-        "presetEchoDelayMs",
-        "presetEchoDecay",
-        "presetBits",
-        "presetHPF",
-        "presetLPF",
-        "stereoWidth",
-        "gain",
-        "textureVolume",
-      ]);
+    const isPresetSmartbomb = p.presetEngine === "defender-smartbomb";
+    const isPresetEngine = isPresetStartup || isPresetSmartbomb;
+    if (isPresetEngine) {
+      const allowed = isPresetStartup
+        ? new Set([
+            "mode",
+            "presetRomTiming",
+            "presetCpuHz",
+            "presetStepMs",
+            "presetEchoes",
+            "presetEchoDelayMs",
+            "presetEchoDecay",
+            "presetBits",
+            "presetHPF",
+            "presetLPF",
+            "stereoWidth",
+            "gain",
+            "textureVolume",
+          ])
+        : new Set([
+            "mode",
+            "presetBaseHz",
+            "presetStepMs",
+            "presetEchoes",
+            "presetEchoDelayMs",
+            "presetEchoDecay",
+            "presetBits",
+            "presetHPF",
+            "presetLPF",
+            "stereoWidth",
+            "gain",
+            "textureVolume",
+          ]);
       rows.forEach((row) => {
         const input = row.querySelector("[data-param]");
         const key = input && input.dataset ? input.dataset.param : "";
