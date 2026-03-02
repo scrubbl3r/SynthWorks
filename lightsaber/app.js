@@ -1524,22 +1524,118 @@
       return new Float32Array(out.length ? out : [0]);
     }
 
-    function renderNoiseBurstPcm(sec = 0.5, hpHz = 80, lpHz = 3000, decay = 4.5) {
-      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
-      const out = new Float32Array(len);
-      let hp = 0;
-      let lp = 0;
-      const hpA = Math.exp(-2 * Math.PI * Math.max(20, hpHz) / ctx.sampleRate);
-      const lpA = Math.exp(-2 * Math.PI * Math.max(40, lpHz) / ctx.sampleRate);
-      for (let i = 0; i < len; i++) {
-        const white = Math.random() * 2 - 1;
-        hp = hpA * hp + (1 - hpA) * white;
-        const hpn = white - hp;
-        lp = lpA * lp + (1 - lpA) * hpn;
-        const env = Math.exp(-decay * (i / len));
-        out[i] = lp * env;
+    function stepDefenderRand(state) {
+      let a = state.lo & 0xff;
+      let carry = 0;
+      for (let i = 0; i < 3; i++) {
+        carry = a & 1;
+        a = (a >> 1) & 0xff;
       }
-      return out;
+      a ^= state.lo & 0xff;
+      carry = a & 1;
+      a = (a >> 1) & 0xff;
+      const hiOld = state.hi & 0xff;
+      const loOld = state.lo & 0xff;
+      const hiNew = ((carry << 7) | (hiOld >> 1)) & 0xff;
+      const loNew = (((hiOld & 1) << 7) | (loOld >> 1)) & 0xff;
+      state.hi = hiNew;
+      state.lo = loNew;
+      return (loOld & 1) !== 0;
+    }
+
+    function u8ToSample(v) {
+      return clamp(((v & 0xff) - 127.5) / 127.5, -1, 1);
+    }
+
+    function waitSamplesFromCounter(counter, cyclesPerIter = 5.0, cpuHz = 894886) {
+      const loops = Math.max(1, counter | 0);
+      return Math.max(1, Math.round((loops * cyclesPerIter / cpuHz) * ctx.sampleRate));
+    }
+
+    function renderLitenRoutine(startLFreq, dfreq, cycnt, maxSec = 2.5) {
+      const maxSamples = Math.max(1, Math.floor(maxSec * ctx.sampleRate));
+      const out = [];
+      const r = { hi: 0xff, lo: 0x37 };
+      let sound = 0xff;
+      let lfreq = startLFreq & 0xff;
+      const dfi = signed8(dfreq);
+
+      while (lfreq !== 0 && out.length < maxSamples) {
+        let b = Math.max(1, cycnt | 0);
+        while (b-- > 0 && out.length < maxSamples) {
+          if (stepDefenderRand(r)) sound = (~sound) & 0xff;
+          const hold = waitSamplesFromCounter(lfreq, 4.8);
+          const s = u8ToSample(sound);
+          for (let i = 0; i < hold && out.length < maxSamples; i++) out.push(s);
+        }
+        lfreq = (lfreq + dfi) & 0xff;
+      }
+      return new Float32Array(out.length ? out : [0]);
+    }
+
+    function renderNoiseRoutine({ decay = 1, period = 1, amp = 0xff, cycnt = 0x20, nfflg = 1, maxSec = 2.0 }) {
+      const maxSamples = Math.max(1, Math.floor(maxSec * ctx.sampleRate));
+      const out = [];
+      const r = { hi: 0xff, lo: 0x37 };
+      let nfrq = Math.max(1, period | 0);
+      let namp = amp & 0xff;
+      const dec = Math.max(1, decay | 0);
+
+      while (out.length < maxSamples && namp > 0) {
+        let b = Math.max(1, cycnt | 0);
+        while (b-- > 0 && out.length < maxSamples) {
+          const sound = stepDefenderRand(r) ? namp : 0;
+          const hold = waitSamplesFromCounter(nfrq, 4.7);
+          const s = u8ToSample(sound);
+          for (let i = 0; i < hold && out.length < maxSamples; i++) out.push(s);
+        }
+        namp = (namp - dec) & 0xff;
+        if (namp === 0) break;
+        if (nfflg) nfrq = (nfrq + 1) & 0xffff;
+      }
+      return new Float32Array(out.length ? out : [0]);
+    }
+
+    function renderFilteredNoiseRoutine({ fmaxInit = 3, fdf = 0, dsflg = 0, sampleCount = 1200, maxSec = 2.0 }) {
+      const maxSamples = Math.max(1, Math.floor(maxSec * ctx.sampleRate));
+      const out = [];
+      const r = { hi: 0xff, lo: 0x37 };
+      let fmax = fmaxInit & 0xff;
+      let flo = 0;
+      let sound = 0;
+      let guard = 0;
+
+      while (out.length < maxSamples && guard++ < 4096) {
+        let x = Math.max(1, sampleCount | 0);
+        while (x-- > 0 && out.length < maxSamples) {
+          stepDefenderRand(r);
+          let fhi = fmax;
+          if (dsflg) fhi &= r.hi;
+          let a = sound & 0xff;
+          let b = flo & 0xff;
+          if (a <= r.lo) {
+            // slope up
+            b = (b + flo) & 0xff;
+            a = (a + fhi + (b < flo ? 1 : 0)) & 0xff;
+          } else {
+            // slope down
+            b = (b - flo) & 0xff;
+            a = (a - fhi) & 0xff;
+          }
+          sound = a & 0xff;
+          const hold = waitSamplesFromCounter(Math.max(1, (fhi & 0xff) || 1), 2.4);
+          const s = u8ToSample(sound);
+          for (let i = 0; i < hold && out.length < maxSamples; i++) out.push(s);
+        }
+        if (!fdf) break;
+        const q = (((fmax << 8) | flo) >> 3) & 0xffff;
+        const inv = ((~q + 1) & 0xffff);
+        const sum = (((fmax << 8) | flo) + inv) & 0xffff;
+        fmax = (sum >> 8) & 0xff;
+        flo = sum & 0xff;
+        if (fmax === 0 && flo === 7) break;
+      }
+      return new Float32Array(out.length ? out : [0]);
     }
 
     function renderScreamPcm(sec = 1.25) {
@@ -1613,17 +1709,44 @@
         }
         return out;
       }
+      if (cmd === 0x10) {
+        // LITE
+        return renderLitenRoutine(0x01, 0x01, 0x03, 2.0);
+      }
+      if (cmd === 0x13) {
+        // TURBO
+        return renderNoiseRoutine({
+          decay: 0x01,
+          period: 0x0001,
+          amp: 0xff,
+          cycnt: 0x20,
+          nfflg: 1,
+          maxSec: 1.9,
+        });
+      }
       if (cmd === 0x14) {
-        // TURBO noise
-        return renderNoiseBurstPcm(0.8, 120, 2600, 2.8);
+        // APPEAR
+        return renderLitenRoutine(0xc0, 0xfe, 0x10, 2.0);
       }
       if (cmd === 0x15) {
-        // APPEAR / lightning-like sweep
-        return renderNoiseBurstPcm(0.6, 220, 5200, 2.0);
+        // THRUST (steady filtered noise bed)
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0x03,
+          fdf: 0,
+          dsflg: 0,
+          sampleCount: 1100,
+          maxSec: 1.5,
+        });
       }
       if (cmd === 0x16) {
-        // THRUST filtered noise bed
-        return renderNoiseBurstPcm(1.0, 80, 1800, 1.3);
+        // CANNON (distorted filtered noise transient)
+        return renderFilteredNoiseRoutine({
+          fmaxInit: 0xff,
+          fdf: 1,
+          dsflg: 1,
+          sampleCount: 1000,
+          maxSec: 1.7,
+        });
       }
       if (cmd === 0x19) {
         return renderScreamPcm(1.35);
