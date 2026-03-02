@@ -175,6 +175,7 @@
       presetBaseHz: 110,
       presetSweep: 9.5,
       presetRomTiming: true,
+      presetStrictRomLoop: true,
       presetCpuHz: 894886,
       presetStepMs: 34,
       presetPeriodScale: 8.4,
@@ -484,6 +485,7 @@
     p0.presetBaseHz = 110.0;
     p0.presetSweep = 1.0;
     p0.presetRomTiming = true;
+    p0.presetStrictRomLoop = true;
     p0.presetCpuHz = 894886;
     p0.presetStepMs = 34.0;
     p0.presetPeriodScale = 1.0;
@@ -749,6 +751,18 @@
       real[k] = oddWeight * tilt * 0.08;
     }
     return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
+  }
+
+  function strictRomLoopEnabled() {
+    // Hidden switch for advanced A/B testing:
+    // localStorage.setItem("dz_strict_rom_loop", "0") to disable strict loop timing.
+    try {
+      const v = localStorage.getItem("dz_strict_rom_loop");
+      if (v == null) return true;
+      return v !== "0" && v !== "false";
+    } catch (_) {
+      return true;
+    }
   }
 
   function createVoice(ctx, master, noiseBuf) {
@@ -1043,7 +1057,7 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
-    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886) {
+    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886, strictLoop = true) {
       // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
       const gccnt = 2;
       const predecay = 0x1a;
@@ -1055,16 +1069,26 @@
       });
       const holdScale = clamp(stepScale, 0.2, 6.0);
       const hz = clamp(cpuHz || 894886, 200000, 3000000);
-      // 680x cycle approximation for the inner sample loop in GWAVE:
-      // period wait: DECA/BNE loop + fixed per-sample overhead around output.
-      const periodCycles = 5.0;
-      const sampleOverheadCycles = 26.0;
+      // 680x cycle model for GWAVE inner loop.
+      // Strict mode uses instruction-counted timing from the ROM loop shape:
+      // GPRLP wait ~= (DECA + BNE)*period with last branch fallthrough -> (5*period - 1) cycles.
+      // Per output sample adds fetch/store/index/compare/branch overhead.
+      // Relaxed mode keeps previous coarse approximation for compatibility.
+      const relaxedPeriodCycles = 5.0;
+      const relaxedSampleOverheadCycles = 26.0;
+      const strictFixedCyclesPerSample = 22.0;
       const out = [];
       for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
         const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
-        const hold = useRomTiming
-          ? Math.max(1, Math.round(((sampleOverheadCycles + period * periodCycles) / hz) * ctx.sampleRate))
-          : Math.max(1, Math.round(period * holdScale));
+        let hold;
+        if (useRomTiming) {
+          const cycles = strictLoop
+            ? (5.0 * period - 1.0 + strictFixedCyclesPerSample)
+            : (relaxedSampleOverheadCycles + period * relaxedPeriodCycles);
+          hold = Math.max(1, Math.round((cycles / hz) * ctx.sampleRate));
+        } else {
+          hold = Math.max(1, Math.round(period * holdScale));
+        }
         for (let c = 0; c < gccnt; c++) {
           for (let s = 0; s < wave.length; s++) {
             const sample = wave[s];
@@ -1085,8 +1109,9 @@
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const romTiming = !!p.presetRomTiming;
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
+      const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
       const stepScale = stepMs / 22.0;
-      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz);
+      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz, strictLoop);
       const baseDur = basePcm.length / ctx.sampleRate;
       const totalSec = baseDur + (echoes - 1) * echoDelay;
 
