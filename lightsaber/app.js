@@ -1969,8 +1969,70 @@
       return out;
     }
 
+    function renderSoundScriptPcmWindowed(script, p, level, opts = {}) {
+      if (!Array.isArray(script) || !script.length) return new Float32Array([0]);
+      const windowFactor = clamp(opts.windowFactor ?? 0.92, 0.1, 2.0);
+      const perEventTailSec = clamp(opts.perEventTailSec ?? 0.006, 0, 0.5);
+      const finalTailSec = clamp(opts.finalTailSec ?? 0.12, 0, 1.5);
+      const minEventSec = clamp(opts.minEventSec ?? 0.01, 0.001, 1.0);
+
+      const events = [];
+      let atSec = 0;
+      for (let i = 0; i < script.length; i++) {
+        const step = script[i];
+        const repeat = clamp(Math.round(step.repeat ?? 1), 1, 16);
+        const gap = clamp((step.delayTicks ?? 1) * 0.016, 0.002, 3.0);
+        const cmd = step.cmd & 0xff;
+        for (let r = 0; r < repeat; r++) {
+          events.push({ atSec, gap, cmd });
+          atSec += gap;
+        }
+      }
+      if (!events.length) return new Float32Array([0]);
+
+      const commandBursts = [];
+      let maxEnd = 0;
+      for (let i = 0; i < events.length; i++) {
+        const ev = events[i];
+        const isLast = i === events.length - 1;
+        const nextAtSec = isLast ? (ev.atSec + ev.gap) : events[i + 1].atSec;
+        const baseWindowSec = Math.max(minEventSec, (nextAtSec - ev.atSec) * windowFactor);
+        const windowSec = baseWindowSec + (isLast ? finalTailSec : perEventTailSec);
+        const maxSamples = Math.max(1, Math.floor(windowSec * ctx.sampleRate));
+        const pcm = renderRomCommandPcm(ev.cmd, p, level);
+        const sliceLen = Math.min(pcm.length, maxSamples);
+        if (sliceLen <= 0) continue;
+        const slice = new Float32Array(sliceLen);
+        slice.set(pcm.subarray(0, sliceLen));
+        // Tiny fade-out avoids clicks at script event window edges.
+        const fade = Math.min(64, sliceLen);
+        for (let f = 0; f < fade; f++) {
+          const idx = sliceLen - 1 - f;
+          const g = f / Math.max(1, fade - 1);
+          slice[idx] *= g;
+        }
+        commandBursts.push({ atSec: ev.atSec, pcm: slice, gain: 1.0 });
+        maxEnd = Math.max(maxEnd, ev.atSec + sliceLen / ctx.sampleRate);
+      }
+
+      const out = new Float32Array(Math.max(1, Math.ceil((maxEnd + 0.01) * ctx.sampleRate)));
+      for (let i = 0; i < commandBursts.length; i++) {
+        const b = commandBursts[i];
+        const start = Math.floor(b.atSec * ctx.sampleRate);
+        for (let n = 0; n < b.pcm.length && start + n < out.length; n++) {
+          out[start + n] = clamp(out[start + n] + b.pcm[n] * b.gain, -1, 1);
+        }
+      }
+      return out;
+    }
+
     function renderDefenderSmartbombPcm(p, level) {
-      return renderSoundScriptPcm(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level);
+      return renderSoundScriptPcmWindowed(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level, {
+        windowFactor: 0.88,
+        perEventTailSec: 0.003,
+        finalTailSec: 0.09,
+        minEventSec: 0.012,
+      });
     }
 
     function triggerPresetStartup(p, t, level) {
@@ -1985,7 +2047,12 @@
         : (variant === "st1st2"
           ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
           : DEFENDER_SOUND_SCRIPTS.START1);
-      const stepPcm = renderSoundScriptPcm(startupScript, p, level);
+      const stepPcm = renderSoundScriptPcmWindowed(startupScript, p, level, {
+        windowFactor: 0.94,
+        perEventTailSec: 0.008,
+        finalTailSec: 0.18,
+        minEventSec: 0.02,
+      });
       const echoes = clamp(Math.round(p.presetEchoes ?? 1), 1, 6);
       const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 320) / 1000;
       const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.98);
