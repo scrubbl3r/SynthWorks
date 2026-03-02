@@ -182,6 +182,7 @@
       presetEchoes: 1,
       presetEchoDelayMs: 72,
       presetEchoDecay: 0.58,
+      presetCabinet: true,
       presetBits: 7,
       presetPulseWidth: 0.5,
       presetHPF: 90,
@@ -492,6 +493,7 @@
     p0.presetEchoes = 1;
     p0.presetEchoDelayMs = 72.0;
     p0.presetEchoDecay = 0.58;
+    p0.presetCabinet = true;
     p0.presetBits = 7;
     p0.presetPulseWidth = 0.5;
     p0.presetHPF = 90;
@@ -558,6 +560,7 @@
     p0.presetEchoes = 6;         // first smartbomb stage repeat count
     p0.presetEchoDelayMs = 256.0; // 0x10 * 16ms delayed tail hint
     p0.presetEchoDecay = 0.78;
+    p0.presetCabinet = true;
     p0.presetBits = 7;
     p0.presetPulseWidth = 0.5;
     p0.presetHPF = 38;
@@ -947,6 +950,10 @@
     const presetLP = ctx.createBiquadFilter();
     presetLP.type = "lowpass";
     presetLP.frequency.value = 10000;
+    const presetReconLP = ctx.createBiquadFilter();
+    presetReconLP.type = "lowpass";
+    presetReconLP.frequency.value = 4200;
+    presetReconLP.Q.value = 0.707;
     const presetGain = ctx.createGain();
     presetGain.gain.value = 0.0;
     const presetCabHP = ctx.createBiquadFilter();
@@ -961,6 +968,10 @@
     presetCabShelf.type = "highshelf";
     presetCabShelf.frequency.value = 3600;
     presetCabShelf.gain.value = -4.5;
+    const presetCabDry = ctx.createGain();
+    presetCabDry.gain.value = 0.0;
+    const presetCabWet = ctx.createGain();
+    presetCabWet.gain.value = 1.0;
 
     const panner = ctx.createStereoPanner();
     panner.pan.value = 0;
@@ -999,11 +1010,15 @@
     const presetInput = ctx.createGain();
     presetInput.connect(presetHP);
     presetHP.connect(presetLP);
-    presetLP.connect(presetGain);
+    presetLP.connect(presetReconLP);
+    presetReconLP.connect(presetGain);
+    presetGain.connect(presetCabDry);
+    presetCabDry.connect(panner);
     presetGain.connect(presetCabHP);
     presetCabHP.connect(presetCabPeak);
     presetCabPeak.connect(presetCabShelf);
-    presetCabShelf.connect(panner);
+    presetCabShelf.connect(presetCabWet);
+    presetCabWet.connect(panner);
 
     const spatialBands = [];
     SPATIAL_CENTERS.forEach((fc) => {
@@ -1248,6 +1263,7 @@
       const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
+      const useCabinet = p.presetCabinet !== false;
       const romTiming = !!p.presetRomTiming;
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
@@ -1261,6 +1277,8 @@
 
       presetHP.frequency.setTargetAtTime(hpf, t, 0.02);
       presetLP.frequency.setTargetAtTime(lpf, t, 0.02);
+      presetCabDry.gain.setTargetAtTime(useCabinet ? 0.0 : 1.0, t, 0.02);
+      presetCabWet.gain.setTargetAtTime(useCabinet ? 1.0 : 0.0, t, 0.02);
       presetGain.gain.cancelScheduledValues(t);
       presetGain.gain.setValueAtTime(0, t);
       if (presetSrc) {
@@ -1293,6 +1311,7 @@
     function triggerPresetSmartbomb(p, t, level) {
       const hpf = clamp(p.presetHPF ?? 38, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 9500, 1200, 16000);
+      const useCabinet = p.presetCabinet !== false;
       const mix = renderDefenderSmartbombPcm(p, level);
       const totalSec = mix.length / ctx.sampleRate;
       presetGateUntil = t + totalSec;
@@ -1300,6 +1319,8 @@
 
       presetHP.frequency.setTargetAtTime(hpf, t, 0.01);
       presetLP.frequency.setTargetAtTime(lpf, t, 0.01);
+      presetCabDry.gain.setTargetAtTime(useCabinet ? 0.0 : 1.0, t, 0.02);
+      presetCabWet.gain.setTargetAtTime(useCabinet ? 1.0 : 0.0, t, 0.02);
       presetGain.gain.cancelScheduledValues(t);
       presetGain.gain.setValueAtTime(0, t);
       if (presetSrc) {
@@ -2285,6 +2306,7 @@
     if (key === "presetEchoes") return `${Math.round(value)}`;
     if (key === "presetEchoDelayMs") return `${value.toFixed(1)} ms`;
     if (key === "presetEchoDecay") return value.toFixed(2);
+    if (key === "presetCabinet") return value ? "On" : "Off";
     if (key === "presetBits") return `${Math.round(value)} bit`;
     if (key === "presetHPF") return `${Math.round(value)} Hz`;
     if (key === "presetLPF") return `${Math.round(value)} Hz`;
@@ -2502,6 +2524,7 @@
             "presetEchoes",
             "presetEchoDelayMs",
             "presetEchoDecay",
+            "presetCabinet",
             "presetBits",
             "presetHPF",
             "presetLPF",
@@ -2516,6 +2539,7 @@
             "presetEchoes",
             "presetEchoDelayMs",
             "presetEchoDecay",
+            "presetCabinet",
             "presetBits",
             "presetHPF",
             "presetLPF",
