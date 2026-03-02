@@ -155,13 +155,13 @@
     );
     return {
       mode: "texture",
-      engineEnabled: false,
-      clockRate: +RNG.range(1.0, 8.0).toFixed(2),
-      gateDepth: +RNG.range(0.0, 0.55).toFixed(2),
-      stepAmount: +RNG.range(0.0, 0.45).toFixed(2),
-      delayMix: +RNG.range(0.0, 0.4).toFixed(2),
-      delayTime: +RNG.range(0.06, 0.24).toFixed(3),
-      feedback: +RNG.range(0.0, 0.55).toFixed(2),
+      engineEnabled: true,
+      clockRate: +RNG.range(2.0, 8.0).toFixed(2),
+      gateDepth: +RNG.range(0.25, 0.55).toFixed(2),
+      stepAmount: +RNG.range(0.2, 0.5).toFixed(2),
+      delayMix: +RNG.range(0.12, 0.35).toFixed(2),
+      delayTime: +RNG.range(0.08, 0.22).toFixed(3),
+      feedback: +RNG.range(0.15, 0.55).toFixed(2),
       textureBehavior: RNG.next() < 0.25 ? "oneshot" : "sustain",
       textureAms: textureEp.a,
       textureSms: textureEp.s,
@@ -1271,13 +1271,13 @@
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
-      if (p.engineEnabled == null) p.engineEnabled = false;
-      if (p.clockRate == null) p.clockRate = 3.0;
-      if (p.gateDepth == null) p.gateDepth = 0.0;
-      if (p.stepAmount == null) p.stepAmount = 0.0;
-      if (p.delayMix == null) p.delayMix = 0.0;
-      if (p.delayTime == null) p.delayTime = 0.12;
-      if (p.feedback == null) p.feedback = 0.0;
+      if (p.engineEnabled == null) p.engineEnabled = true;
+      if (p.clockRate == null) p.clockRate = 4.0;
+      if (p.gateDepth == null) p.gateDepth = 0.35;
+      if (p.stepAmount == null) p.stepAmount = 0.3;
+      if (p.delayMix == null) p.delayMix = 0.22;
+      if (p.delayTime == null) p.delayTime = 0.14;
+      if (p.feedback == null) p.feedback = 0.32;
       if (p.gain == null) p.gain = 0.15;
       if (p.textureVolume == null) p.textureVolume = 1.0;
       if (p.noiseVolume == null) p.noiseVolume = 1.0;
@@ -1912,9 +1912,7 @@
       const showByMode = m === "all" || m === mode;
       const hideInNoise = row.dataset.hideNoise === "1" && mode === "noise";
       const hideInBass = row.dataset.hideBass === "1" && mode === "bass";
-      const isEngineDetail = row.dataset.engineDetail === "1";
-      const hideEngineDetail = isEngineDetail && !p.engineEnabled;
-      const show = showByMode && !hideInNoise && !hideInBass && !hideEngineDetail;
+      const show = showByMode && !hideInNoise && !hideInBass;
       row.style.display = show ? "" : "none";
     });
     const textureOneShotRows = controls.querySelectorAll("[data-texture-oneshot]");
