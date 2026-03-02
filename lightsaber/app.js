@@ -3293,12 +3293,17 @@
   }
 
   async function startAudio() {
-    ensureAudio();
-    if (!state.playing) return;
-    if (state.ctx.state !== "running") {
-      try { await state.ctx.resume(); } catch (_) {}
-    }
     if (startOverlay) startOverlay.style.display = "none";
+    try {
+      ensureAudio();
+      if (!state.playing) return;
+      if (state.ctx && state.ctx.state !== "running") {
+        try { await state.ctx.resume(); } catch (_) {}
+      }
+    } catch (err) {
+      // Keep UI unblocked even if a browser/audio init quirk occurs.
+      try { console.error("startAudio init failed", err); } catch (_) {}
+    }
   }
 
   function ensureRandomizeLockUI() {
