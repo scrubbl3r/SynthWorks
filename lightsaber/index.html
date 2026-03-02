@@ -74,6 +74,48 @@
           </select>
         </label>
 
+        <label class="row" data-mode="all">
+          <span>Engine</span>
+          <input type="checkbox" data-param="engineEnabled" />
+          <output data-out="engineEnabled"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Clock Rate</span>
+          <input type="range" min="0.2" max="20" step="0.01" data-param="clockRate" />
+          <output data-out="clockRate"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Gate Depth</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="gateDepth" />
+          <output data-out="gateDepth"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Step Amount</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="stepAmount" />
+          <output data-out="stepAmount"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Delay Mix</span>
+          <input type="range" min="0" max="1" step="0.01" data-param="delayMix" />
+          <output data-out="delayMix"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Delay Time</span>
+          <input type="range" min="0.02" max="0.6" step="0.005" data-param="delayTime" />
+          <output data-out="delayTime"></output>
+        </label>
+
+        <label class="row" data-mode="all" data-engine-detail="1">
+          <span>Feedback</span>
+          <input type="range" min="0" max="0.95" step="0.01" data-param="feedback" />
+          <output data-out="feedback"></output>
+        </label>
+
         <label class="row" data-mode="all" data-hide-noise="1">
           <span>Oscillator</span>
           <div class="rowInline">

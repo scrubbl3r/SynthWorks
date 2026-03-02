@@ -25,6 +25,13 @@
   // 
   const PARAMS = [
     { key: "mode", label: "Mode" },
+    { key: "engineEnabled", label: "Engine" },
+    { key: "clockRate", label: "Clock Rate" },
+    { key: "gateDepth", label: "Gate Depth" },
+    { key: "stepAmount", label: "Step Amount" },
+    { key: "delayMix", label: "Delay Mix" },
+    { key: "delayTime", label: "Delay Time" },
+    { key: "feedback", label: "Feedback" },
     { key: "textureBehavior", label: "Texture Behavior" },
     { key: "textureAms", label: "Texture A ms" },
     { key: "textureSms", label: "Texture S ms" },
@@ -148,6 +155,13 @@
     );
     return {
       mode: "texture",
+      engineEnabled: false,
+      clockRate: +RNG.range(1.0, 8.0).toFixed(2),
+      gateDepth: +RNG.range(0.0, 0.55).toFixed(2),
+      stepAmount: +RNG.range(0.0, 0.45).toFixed(2),
+      delayMix: +RNG.range(0.0, 0.4).toFixed(2),
+      delayTime: +RNG.range(0.06, 0.24).toFixed(3),
+      feedback: +RNG.range(0.0, 0.55).toFixed(2),
       textureBehavior: RNG.next() < 0.25 ? "oneshot" : "sustain",
       textureAms: textureEp.a,
       textureSms: textureEp.s,
@@ -267,6 +281,13 @@
         };
     const mode = RNG.pick(modePool.length ? modePool : ["texture", "bass", "noise"]);
     p.mode = mode;
+    p.engineEnabled = RNG.next() < 0.3;
+    p.clockRate = +RNG.range(0.6, 12.0).toFixed(2);
+    p.gateDepth = +RNG.range(0.0, 0.8).toFixed(2);
+    p.stepAmount = +RNG.range(0.0, 0.75).toFixed(2);
+    p.delayMix = +RNG.range(0.0, 0.55).toFixed(2);
+    p.delayTime = +RNG.range(0.03, 0.35).toFixed(3);
+    p.feedback = +RNG.range(0.0, 0.75).toFixed(2);
     const pickBehavior = (modeName) => RNG.pick(
       behaviorByMode[modeName] && behaviorByMode[modeName].length
         ? behaviorByMode[modeName]
@@ -663,6 +684,25 @@
     spatialDry.gain.value = 1.0;
     const voiceOut = ctx.createGain();
     voiceOut.gain.value = 0;
+    const engineGate = ctx.createGain();
+    engineGate.gain.value = 1.0;
+    const engineDry = ctx.createGain();
+    engineDry.gain.value = 1.0;
+    const engineDelay = ctx.createDelay(1.0);
+    engineDelay.delayTime.value = 0.12;
+    const engineDelayFb = ctx.createGain();
+    engineDelayFb.gain.value = 0.25;
+    const engineWet = ctx.createGain();
+    engineWet.gain.value = 0.0;
+    const engineOut = ctx.createGain();
+    engineOut.gain.value = 1.0;
+    const gateBase = ctx.createConstantSource();
+    gateBase.offset.value = 1.0;
+    const gateLfo = ctx.createOscillator();
+    gateLfo.type = "triangle";
+    gateLfo.frequency.value = 3.0;
+    const gateLfoGain = ctx.createGain();
+    gateLfoGain.gain.value = 0.0;
     noiseModeGain.connect(noisePostGain);
     noiseCrackleGain.connect(noisePostGain);
     noiseBoomGain.connect(noisePostGain);
@@ -700,7 +740,18 @@
     panner.connect(spatialEntry);
     panner.connect(spatialDry);
     spatialDry.connect(voiceOut);
-    voiceOut.connect(master);
+    voiceOut.connect(engineGate);
+    engineGate.connect(engineDry);
+    engineGate.connect(engineDelay);
+    engineDelay.connect(engineDelayFb);
+    engineDelayFb.connect(engineDelay);
+    engineDelay.connect(engineWet);
+    engineDry.connect(engineOut);
+    engineWet.connect(engineOut);
+    engineOut.connect(master);
+    gateBase.connect(engineGate.gain);
+    gateLfo.connect(gateLfoGain);
+    gateLfoGain.connect(engineGate.gain);
 
     const bassDrive = makeDrive(ctx);
     const bassLP = ctx.createBiquadFilter();
@@ -752,6 +803,8 @@
     bassLfoLPF.start();
     bassLfoRes.start();
     bassLfoDrive.start();
+    gateBase.start();
+    gateLfo.start();
     noiseBoomOsc.start();
     noiseRingOsc.start();
 
@@ -771,6 +824,7 @@
     const sustainSpatialRate = lerp(0.045, 0.12, Math.random());
     const sustainSpatialDepth = lerp(0.55, 1.0, Math.random());
     const oneShotSpatial = { active: false, t0: 0, dur: 0, dir: 1 };
+    let nextStepAt = 0;
 
     function noiseTypeProfile(noiseType) {
       if (noiseType === "pink") return { hpMul: 0.55, lpMul: 0.85, resMul: 0.8, edgeAdd: -0.08 };
@@ -862,11 +916,47 @@
       const isBass = p.mode === "bass";
       const isNoise = p.mode === "noise";
       const isTexture = !isBass && !isNoise;
+      const engineOn = !!p.engineEnabled;
+      const clockRate = clamp(p.clockRate ?? 3.0, 0.2, 20);
+      const gateDepth = clamp01(p.gateDepth ?? 0);
+      const stepAmount = clamp01(p.stepAmount ?? 0);
+      const delayMix = clamp01(p.delayMix ?? 0);
+      const delayTime = clamp(p.delayTime ?? 0.12, 0.02, 0.6);
+      const feedback = clamp(p.feedback ?? 0, 0, 0.95);
       const textureGain = clamp(p.gain, 0, 1.5);
       const bassGainValue = clamp(p.bassVolume ?? 1.0, 0, 1.5);
       const noiseGainValue = clamp(p.gain, 0, 1.5);
       const textureVolumeValue = clamp(p.textureVolume ?? 1.0, 0, 1.5);
       const noiseVolumeValue = clamp(p.noiseVolume ?? 1.0, 0, 1.5);
+
+      if (!engineOn) {
+        gateBase.offset.setTargetAtTime(1.0, t, 0.04);
+        gateLfoGain.gain.setTargetAtTime(0.0, t, 0.04);
+        engineDry.gain.setTargetAtTime(1.0, t, 0.06);
+        engineWet.gain.setTargetAtTime(0.0, t, 0.06);
+        engineDelayFb.gain.setTargetAtTime(0.0, t, 0.06);
+      } else {
+        const base = clamp(1.0 - gateDepth * 0.5, 0, 1.2);
+        const mod = gateDepth * 0.5;
+        gateLfo.frequency.setTargetAtTime(clockRate, t, 0.15);
+        gateBase.offset.setTargetAtTime(base, t, 0.08);
+        gateLfoGain.gain.setTargetAtTime(mod, t, 0.08);
+        engineDelay.delayTime.setTargetAtTime(delayTime, t, 0.08);
+        engineDelayFb.gain.setTargetAtTime(feedback, t, 0.08);
+        engineDry.gain.setTargetAtTime(1.0 - delayMix, t, 0.08);
+        engineWet.gain.setTargetAtTime(delayMix, t, 0.08);
+
+        if (stepAmount > 0) {
+          if (!nextStepAt || t >= nextStepAt) {
+            const stepPeriod = 1 / clockRate;
+            nextStepAt = t + stepPeriod;
+            const stepDelta = (Math.random() * 2 - 1) * stepAmount * 0.35;
+            gateBase.offset.setTargetAtTime(clamp(base + stepDelta, 0, 1.25), t, 0.02);
+          }
+        } else {
+          nextStepAt = 0;
+        }
+      }
       const rate = clamp(p.oscRate, 0.5, 2.5);
       const base = p.baseHz * rate;
       const isSingle = !!p.singleOsc;
@@ -1181,6 +1271,13 @@
       state.voices.push(createVoice(state.ctx, state.master, noiseBuf));
       const p = state.voiceParams[i] || defaults();
       ensureParamLocks(i);
+      if (p.engineEnabled == null) p.engineEnabled = false;
+      if (p.clockRate == null) p.clockRate = 3.0;
+      if (p.gateDepth == null) p.gateDepth = 0.0;
+      if (p.stepAmount == null) p.stepAmount = 0.0;
+      if (p.delayMix == null) p.delayMix = 0.0;
+      if (p.delayTime == null) p.delayTime = 0.12;
+      if (p.feedback == null) p.feedback = 0.0;
       if (p.gain == null) p.gain = 0.15;
       if (p.textureVolume == null) p.textureVolume = 1.0;
       if (p.noiseVolume == null) p.noiseVolume = 1.0;
@@ -1609,6 +1706,13 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "engineEnabled") return value ? "On" : "Off";
+    if (key === "clockRate") return `${value.toFixed(2)} Hz`;
+    if (key === "gateDepth") return value.toFixed(2);
+    if (key === "stepAmount") return value.toFixed(2);
+    if (key === "delayMix") return value.toFixed(2);
+    if (key === "delayTime") return `${value.toFixed(3)} s`;
+    if (key === "feedback") return value.toFixed(2);
     if (key === "textureBehavior") return value === "oneshot" ? "One-shot" : "Sustain";
     if (key === "textureAms") return `${Math.round(value)} ms`;
     if (key === "textureSms") return `${Math.round(value)} ms`;
@@ -1741,6 +1845,7 @@
       applyVoice(state.active);
       if (
         key === "mode" ||
+        key === "engineEnabled" ||
         key === "textureBehavior" ||
         key === "bassBehavior" ||
         key === "noiseBehavior"
@@ -1801,15 +1906,17 @@
 
   function applyModeVisibility(mode) {
     const rows = controls.querySelectorAll("[data-mode]");
+    const p = state.voiceParams[state.active] || {};
     rows.forEach((row) => {
       const m = row.dataset.mode;
       const showByMode = m === "all" || m === mode;
       const hideInNoise = row.dataset.hideNoise === "1" && mode === "noise";
       const hideInBass = row.dataset.hideBass === "1" && mode === "bass";
-      const show = showByMode && !hideInNoise && !hideInBass;
+      const isEngineDetail = row.dataset.engineDetail === "1";
+      const hideEngineDetail = isEngineDetail && !p.engineEnabled;
+      const show = showByMode && !hideInNoise && !hideInBass && !hideEngineDetail;
       row.style.display = show ? "" : "none";
     });
-    const p = state.voiceParams[state.active] || {};
     const textureOneShotRows = controls.querySelectorAll("[data-texture-oneshot]");
     textureOneShotRows.forEach((row) => {
       if (mode !== "texture") return;
