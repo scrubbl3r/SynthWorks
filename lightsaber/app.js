@@ -174,6 +174,33 @@
     BONV: { b0: 0x31, b1: 0x11, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x00, pattern: "BONSND", wave: "GSSQ2" },
     TRBV: { b0: 0x12, b1: 0x06, predecay: 0x00, gdfinc: 0xff, gdcnt: 0x01, pattern: "TRBPAT", wave: "GS1_7" },
   };
+  const DEFENDER_ROM_BASE = 0xf800;
+  const DEFENDER_ROM_ADDR = {
+    RADSND: 0xfd9a,
+    GWVTAB: 0xfe4d,
+    GS2: 0xfe4d,
+    GSSQ2: 0xfe56,
+    GS1: 0xfe5f,
+    GS12: 0xfe70,
+    GSQ22: 0xfe81,
+    GS72: 0xfe92,
+    GS1_7: 0xfedb,
+    SVTAB: 0xfeec,
+    STDV: 0xfef3,
+    BONV: 0xff47,
+    GFRTAB: 0xff55,
+    BONSND: 0xff55,
+    HBDSND: 0xff62,
+    SWPAT: 0xff78,
+    BBSND: 0xff78,
+    HBESND: 0xff8c,
+    SPNR: 0xff9a,
+    COOLDN: 0xff9b,
+    STDSND: 0xffc2,
+    ED10FP: 0xffe9,
+    ED13FP: 0xffef,
+    TRBPAT: 0xfff8,
+  };
 
   function makeEnvelopeEndpoints(aDur, sDur, dDur) {
     const a = clamp(Math.round(aDur), 0, ENV_TOTAL_MS);
@@ -877,6 +904,103 @@
     }
   }
 
+  function loadDefenderRomBlob() {
+    const hex = typeof window !== "undefined" ? window.DEFENDER_SOUND_ROM_HEX : null;
+    if (!hex || typeof hex !== "string" || hex.length < 4096) return null;
+    const clean = hex.trim().toLowerCase();
+    if (!/^[0-9a-f]+$/.test(clean) || clean.length % 2 !== 0) return null;
+    const bytes = new Uint8Array(clean.length / 2);
+    for (let i = 0; i < clean.length; i += 2) {
+      bytes[i >> 1] = parseInt(clean.slice(i, i + 2), 16);
+    }
+    return bytes;
+  }
+
+  function defenderRomByte(rom, addr) {
+    const i = addr - DEFENDER_ROM_BASE;
+    if (!rom || i < 0 || i >= rom.length) return 0;
+    return rom[i];
+  }
+
+  function readRomBytes(rom, addr, len) {
+    const out = [];
+    for (let i = 0; i < len; i++) out.push(defenderRomByte(rom, addr + i));
+    return out;
+  }
+
+  function readRomWave(rom, addr) {
+    const len = defenderRomByte(rom, addr) & 0xff;
+    return readRomBytes(rom, addr + 1, len);
+  }
+
+  function readRomVector(rom, addr) {
+    return {
+      b0: defenderRomByte(rom, addr + 0),
+      b1: defenderRomByte(rom, addr + 1),
+      predecay: defenderRomByte(rom, addr + 2),
+      gdfinc: defenderRomByte(rom, addr + 3),
+      gdcnt: defenderRomByte(rom, addr + 4),
+      patternLen: defenderRomByte(rom, addr + 5),
+      patternOff: defenderRomByte(rom, addr + 6),
+    };
+  }
+
+  function buildDefenderRomTables() {
+    const rom = loadDefenderRomBlob();
+    if (!rom) return null;
+
+    const waves = {
+      GS2: readRomWave(rom, DEFENDER_ROM_ADDR.GS2),
+      GSSQ2: readRomWave(rom, DEFENDER_ROM_ADDR.GSSQ2),
+      GS1: readRomWave(rom, DEFENDER_ROM_ADDR.GS1),
+      GS12: readRomWave(rom, DEFENDER_ROM_ADDR.GS12),
+      GSQ22: readRomWave(rom, DEFENDER_ROM_ADDR.GSQ22),
+      GS72: readRomWave(rom, DEFENDER_ROM_ADDR.GS72),
+      GS1_7: readRomWave(rom, DEFENDER_ROM_ADDR.GS1_7),
+    };
+    const vectorsRaw = {
+      HBDV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 0 * 7),
+      STDV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 1 * 7),
+      DP1V: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 2 * 7),
+      XBV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 3 * 7),
+      BBSV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 4 * 7),
+      HBEV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 5 * 7),
+      PROTV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 6 * 7),
+      SPNRV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 7 * 7),
+      CLDWNV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 8 * 7),
+      SV3: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 9 * 7),
+      ED10: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 10 * 7),
+      ED12: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 11 * 7),
+      ED17: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 12 * 7),
+      BONV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 13 * 7),
+      TRBV: readRomVector(rom, DEFENDER_ROM_ADDR.SVTAB + 14 * 7),
+    };
+    const waveByNibble = ["GS2", "GSSQ2", "GS1", "GS12", "GSQ22", "GS72", "GS1_7"];
+    const vectors = {};
+    Object.keys(vectorsRaw).forEach((k) => {
+      const v = vectorsRaw[k];
+      const wave = waveByNibble[v.b1 & 0x0f] || "GS2";
+      const patAddr = DEFENDER_ROM_ADDR.GFRTAB + (v.patternOff & 0xff);
+      vectors[k] = {
+        b0: v.b0,
+        b1: v.b1,
+        predecay: v.predecay,
+        gdfinc: v.gdfinc,
+        gdcnt: v.gdcnt,
+        pattern: readRomBytes(rom, patAddr, v.patternLen & 0xff),
+        wave,
+      };
+    });
+
+    return {
+      waves,
+      vectors,
+      radsnd: readRomBytes(rom, DEFENDER_ROM_ADDR.RADSND, 16),
+    };
+  }
+
+  const DEFENDER_ROM_TABLES = buildDefenderRomTables();
+
   function createVoice(ctx, master, noiseBuf) {
     const oscA = ctx.createOscillator();
     const oscB = ctx.createOscillator();
@@ -1235,10 +1359,16 @@
     }
 
     function renderRomGwaveVector(vectorName, opts = {}) {
-      const vector = DEFENDER_GWAVE_VECTORS[vectorName];
+      const romVector = DEFENDER_ROM_TABLES && DEFENDER_ROM_TABLES.vectors
+        ? DEFENDER_ROM_TABLES.vectors[vectorName]
+        : null;
+      const vector = romVector || DEFENDER_GWAVE_VECTORS[vectorName];
       if (!vector) return new Float32Array(1);
-      const romWave = DEFENDER_WAVES[vector.wave] ? DEFENDER_WAVES[vector.wave].slice() : DEFENDER_WAVES.GS2.slice();
-      const pattern = DEFENDER_PATTERNS[vector.pattern] ? DEFENDER_PATTERNS[vector.pattern].slice() : [0x40];
+      const waves = DEFENDER_ROM_TABLES && DEFENDER_ROM_TABLES.waves ? DEFENDER_ROM_TABLES.waves : DEFENDER_WAVES;
+      const romWave = waves[vector.wave] ? waves[vector.wave].slice() : DEFENDER_WAVES.GS2.slice();
+      const pattern = Array.isArray(vector.pattern)
+        ? vector.pattern.slice()
+        : (DEFENDER_PATTERNS[vector.pattern] ? DEFENDER_PATTERNS[vector.pattern].slice() : [0x40]);
       const bitDepth = clamp(Math.round(opts.bitDepth ?? 7), 3, 12);
       const stepScale = opts.stepScale ?? 1.0;
       const useRomTiming = !!opts.romTiming;
@@ -1346,7 +1476,8 @@
           if (freq === 0) break;
         }
         const idx = timerH & 0x0f;
-        const sampleU8 = DEFENDER_RADSND[idx] & 0xff;
+        const tbl = DEFENDER_ROM_TABLES && DEFENDER_ROM_TABLES.radsnd ? DEFENDER_ROM_TABLES.radsnd : DEFENDER_RADSND;
+        const sampleU8 = tbl[idx] & 0xff;
         const sample = quantizeSample((sampleU8 - 127.5) / 127.5, bitDepth);
         for (let h = 0; h < hold; h++) out.push(sample);
       }
