@@ -211,6 +211,14 @@
       { repeat: 1, delayTicks: 0x10, cmd: 0x17 },
     ],
   };
+  const DEFENDER_VARI_VECTORS = [
+    // SAW, FOSHIT, QUASAR, CABSHK (vsndrm1: VVECT, 9 bytes each).
+    { loPer: 0x40, hiPer: 0x01, loDt: 0x00, hiDt: 0x10, hiEn: 0xe1, swpDt: 0x0080, loMod: 0xff, vAmp: 0xff },
+    { loPer: 0x28, hiPer: 0x01, loDt: 0x00, hiDt: 0x08, hiEn: 0x81, swpDt: 0x0200, loMod: 0xff, vAmp: 0xff },
+    { loPer: 0x28, hiPer: 0x81, loDt: 0x00, hiDt: 0xfc, hiEn: 0x01, swpDt: 0x0200, loMod: 0xfc, vAmp: 0xff },
+    { loPer: 0xff, hiPer: 0x01, loDt: 0x00, hiDt: 0x18, hiEn: 0x41, swpDt: 0x0480, loMod: 0x00, vAmp: 0xff },
+  ];
+  const DEFENDER_NOTTAB = [0x47, 0x3f, 0x37, 0x30, 0x29, 0x23, 0x1d, 0x17, 0x12, 0x0d, 0x08, 0x04];
   const DEFENDER_ROM_BASE = 0xf800;
   const DEFENDER_ROM_ADDR = {
     RADSND: 0xfd9a,
@@ -1662,6 +1670,90 @@
       return out;
     }
 
+    function renderVariVectorPcm(vec, bitDepth = 7, maxSec = 1.8) {
+      const maxSamples = Math.max(1, Math.floor(maxSec * ctx.sampleRate));
+      const out = [];
+      let loPer = vec.loPer & 0xff;
+      const hiPerBase = vec.hiPer & 0xff;
+      let loCnt = loPer;
+      let hiCnt = hiPerBase;
+      let sound = vec.vAmp & 0xff;
+      const hiDt = signed8(vec.hiDt);
+      const loDt = signed8(vec.loDt);
+      const hiEn = vec.hiEn & 0xff;
+      const loMod = signed8(vec.loMod);
+      const swp = Math.max(1, vec.swpDt | 0);
+      let guard = 0;
+
+      const pulse = (count, high) => {
+        const hold = waitSamplesFromCounter(count, 4.5);
+        const s0 = high ? sound : ((~sound) & 0xff);
+        const s = quantizeSample(u8ToSample(s0), bitDepth);
+        for (let i = 0; i < hold && out.length < maxSamples; i++) out.push(s);
+      };
+
+      while (out.length < maxSamples && guard++ < 16384) {
+        // One VARI sweep window.
+        let x = swp;
+        while (x-- > 0 && out.length < maxSamples) {
+          pulse(Math.max(1, loCnt), false);
+          pulse(Math.max(1, hiCnt), true);
+        }
+        loCnt = (loCnt + loDt) & 0xff;
+        hiCnt = (hiCnt + hiDt) & 0xff;
+        if (hiCnt === hiEn) {
+          if (loMod === 0) break;
+          loPer = (loPer + loMod) & 0xff;
+          if (loPer === 0) break;
+          loCnt = loPer;
+          hiCnt = hiPerBase;
+        }
+      }
+
+      return new Float32Array(out.length ? out : [0]);
+    }
+
+    function renderOrganTunePcm(sec = 1.8) {
+      // Compact ORGTAB-inspired phantom-ish phrase for audition.
+      const notes = [0x1d, 0x23, 0x08];
+      const durs = [0.32, 0.32, 1.0];
+      const totalDur = durs.reduce((a, b) => a + b, 0);
+      const scale = sec / totalDur;
+      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
+      const out = new Float32Array(len);
+      let t0 = 0;
+      for (let i = 0; i < notes.length; i++) {
+        const dur = durs[i] * scale;
+        const nlen = Math.max(1, Math.floor(dur * ctx.sampleRate));
+        const period = Math.max(1, notes[i] & 0xff);
+        const hz = clamp(894886 / (period * 38.0), 50, 4200);
+        const phaseStep = (2 * Math.PI * hz) / ctx.sampleRate;
+        for (let n = 0; n < nlen && t0 + n < out.length; n++) {
+          const env = Math.exp(-2.2 * (n / nlen));
+          const s = Math.sin(phaseStep * n) * 0.62 + Math.sin(phaseStep * 2 * n) * 0.21;
+          out[t0 + n] += s * env;
+        }
+        t0 += nlen;
+      }
+      for (let i = 0; i < out.length; i++) out[i] = clamp(out[i], -1, 1);
+      return out;
+    }
+
+    function renderOrganNotePcm(sec = 1.0, nottabIndex = 4) {
+      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
+      const out = new Float32Array(len);
+      const idx = clamp(Math.round(nottabIndex), 0, DEFENDER_NOTTAB.length - 1);
+      const period = DEFENDER_NOTTAB[idx] & 0xff;
+      const hz = clamp(894886 / (period * 42.0), 60, 3200);
+      const step = (2 * Math.PI * hz) / ctx.sampleRate;
+      for (let i = 0; i < len; i++) {
+        const env = Math.exp(-3.2 * (i / len));
+        const sig = Math.sin(step * i) * 0.64 + Math.sin(step * 0.5 * i) * 0.28;
+        out[i] = sig * env;
+      }
+      return out;
+    }
+
     function renderRomCommandPcm(cmd, p, level) {
       const romTiming = !!p.presetRomTiming;
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
@@ -1750,6 +1842,17 @@
       }
       if (cmd === 0x19) {
         return renderScreamPcm(1.35);
+      }
+      if (cmd === 0x1a) {
+        return renderOrganTunePcm(1.9);
+      }
+      if (cmd === 0x1b) {
+        return renderOrganNotePcm(1.0, 4);
+      }
+      if (cmd >= 0x1c && cmd <= 0x3f) {
+        const idx = (cmd - 0x1c) % DEFENDER_VARI_VECTORS.length;
+        const vec = DEFENDER_VARI_VECTORS[idx];
+        return renderVariVectorPcm(vec, bits, 1.8);
       }
       // Unknown/special commands fallback to silence.
       return new Float32Array([0]);
