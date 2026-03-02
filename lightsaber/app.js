@@ -28,6 +28,7 @@
   // 
   const PARAMS = [
     { key: "mode", label: "Mode" },
+    { key: "presetStartupVariant", label: "Startup Variant" },
     { key: "engineEnabled", label: "Engine" },
     { key: "clockRate", label: "Clock Rate" },
     { key: "gateDepth", label: "Gate Depth" },
@@ -266,6 +267,7 @@
     return {
       mode: "texture",
       presetEngine: "none",
+      presetStartupVariant: "st1",
       presetBaseHz: 110,
       presetSweep: 9.5,
       presetRomTiming: true,
@@ -541,6 +543,7 @@
     const p0 = mk();
     p0.mode = "texture";
     p0.presetEngine = "defender-startup";
+    p0.presetStartupVariant = "st1";
     p0.textureBehavior = "oneshot";
     p0.engineEnabled = false;
     p0.clockRate = 1.0;
@@ -617,6 +620,7 @@
     const p0 = mk();
     p0.mode = "texture";
     p0.presetEngine = "defender-smartbomb";
+    p0.presetStartupVariant = "st1";
     p0.textureBehavior = "oneshot";
     p0.engineEnabled = false;
     p0.clockRate = 1.0;
@@ -1596,12 +1600,17 @@
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
-      // Startup script from defa7: ST1SND (and optional ST2SND when echoes > 1).
-      const script = (p.presetEchoes ?? 1) > 1
-        ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
-        : DEFENDER_SOUND_SCRIPTS.START1;
-      const basePcm = renderSoundScriptPcm(script, p, level);
-      const totalSec = basePcm.length / ctx.sampleRate;
+      const variant = String(p.presetStartupVariant || "st1");
+      const startupScript = variant === "st2"
+        ? DEFENDER_SOUND_SCRIPTS.START2
+        : (variant === "st1st2"
+          ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
+          : DEFENDER_SOUND_SCRIPTS.START1);
+      const stepPcm = renderSoundScriptPcm(startupScript, p, level);
+      const echoes = clamp(Math.round(p.presetEchoes ?? 1), 1, 6);
+      const echoDelay = clamp(p.presetEchoDelayMs ?? 72, 10, 320) / 1000;
+      const echoDecay = clamp(p.presetEchoDecay ?? 0.58, 0.2, 0.98);
+      const totalSec = stepPcm.length / ctx.sampleRate + (echoes - 1) * echoDelay;
 
       presetGateUntil = t + totalSec;
       triggerSpatialOneShot(totalSec, t);
@@ -1618,8 +1627,16 @@
         presetSrc = null;
       }
 
-      const buf = ctx.createBuffer(1, basePcm.length, ctx.sampleRate);
-      buf.getChannelData(0).set(basePcm);
+      const mix = new Float32Array(Math.max(1, Math.ceil(totalSec * ctx.sampleRate)));
+      for (let e = 0; e < echoes; e++) {
+        const echoLevel = Math.pow(echoDecay, e);
+        const start = Math.floor(e * echoDelay * ctx.sampleRate);
+        for (let i = 0; i < stepPcm.length && start + i < mix.length; i++) {
+          mix[start + i] = clamp(mix[start + i] + stepPcm[i] * echoLevel, -1, 1);
+        }
+      }
+      const buf = ctx.createBuffer(1, mix.length, ctx.sampleRate);
+      buf.getChannelData(0).set(mix);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       src.connect(presetInput);
@@ -2190,6 +2207,7 @@
       if (p.delayMix == null) p.delayMix = 0.22;
       if (p.delayTime == null) p.delayTime = 0.14;
       if (p.feedback == null) p.feedback = 0.32;
+      if (p.presetStartupVariant == null) p.presetStartupVariant = "st1";
       if (p.gain == null) p.gain = 0.15;
       if (p.textureVolume == null) p.textureVolume = 1.0;
       if (p.noiseVolume == null) p.noiseVolume = 1.0;
@@ -2622,6 +2640,11 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "presetStartupVariant") {
+      if (value === "st2") return "ST2";
+      if (value === "st1st2") return "ST1+ST2";
+      return "ST1";
+    }
     if (key === "presetRomTiming") return value ? "On" : "Off";
     if (key === "presetCpuHz") return `${Math.round(value)} Hz`;
     if (key === "presetStepMs") return `${value.toFixed(1)} ms`;
@@ -2840,6 +2863,7 @@
       const allowed = isPresetStartup
         ? new Set([
             "mode",
+            "presetStartupVariant",
             "presetRomTiming",
             "presetCpuHz",
             "presetStepMs",
