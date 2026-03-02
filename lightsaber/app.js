@@ -8,6 +8,7 @@
   const randomizeModeSelect = document.getElementById("randomizeModeSelect");
   const presetFamilySelect = document.getElementById("presetFamilySelect");
   const auditionCommandSelect = document.getElementById("auditionCommandSelect");
+  const auditionModeSelect = document.getElementById("auditionModeSelect");
   const auditionCommandHex = document.getElementById("auditionCommandHex");
   const auditionPlayBtn = document.getElementById("auditionPlayBtn");
   const traceEnabledBox = document.getElementById("traceEnabled");
@@ -1469,11 +1470,21 @@
     let oneShotCooldownUntil = 0;
     let presetGateUntil = 0;
     let bon2Active = false;
+    let bg1Flag = 0;
+    let bg2Flag = 0;
+    let sp1Flag = 0;
     const sustainSpatialPhase = Math.random() * Math.PI * 2;
     const sustainSpatialRate = lerp(0.045, 0.12, Math.random());
     const sustainSpatialDepth = lerp(0.55, 1.0, Math.random());
     const oneShotSpatial = { active: false, t0: 0, dur: 0, dir: 1 };
     let nextStepAt = 0;
+
+    function resetRomStateFlags() {
+      bon2Active = false;
+      bg1Flag = 0;
+      bg2Flag = 0;
+      sp1Flag = 0;
+    }
 
     function noiseTypeProfile(noiseType) {
       if (noiseType === "pink") return { hpMul: 0.55, lpMul: 0.85, resMul: 0.8, edgeAdd: -0.08 };
@@ -1918,7 +1929,7 @@
       return renderOrganEntryPcm(entry, sec);
     }
 
-    function renderRomCommandPcm(cmd, p, level) {
+    function renderRomCommandPcm(cmd, p, level, mode = "event") {
       const romTiming = !!p.presetRomTiming;
       const strictLoop = p.presetStrictRomLoop !== false && strictRomLoopEnabled();
       const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
@@ -1942,6 +1953,7 @@
       }
       if (cmd === 0x0e) {
         // SP1 spinner family accent.
+        sp1Flag = (sp1Flag + 1) & 0xff;
         return renderRomGwaveVector("SPNRV", {
           bitDepth: bits,
           romTiming,
@@ -1951,7 +1963,10 @@
         });
       }
       if (cmd === 0x0f) {
-        // BG1 low filtered-noise bed.
+        // BG1 control in ROM; event mode returns an audible proxy.
+        bg1Flag = 1;
+        bg2Flag = 0;
+        if (mode === "raw") return new Float32Array([0]);
         return renderFilteredNoiseRoutine({
           fmaxInit: 0x01,
           fdf: 0,
@@ -1961,7 +1976,10 @@
         });
       }
       if (cmd === 0x10) {
-        // BG2INC is a control update in ROM; expose a short turbine accent for audition.
+        // BG2INC is mostly a control update; event mode returns a proxy accent.
+        bg1Flag = 0;
+        bg2Flag = Math.min(29, (bg2Flag | 0) + 1);
+        if (mode === "raw") return new Float32Array([0]);
         return renderRomGwaveVector("TRBV", {
           bitDepth: bits,
           romTiming,
@@ -1976,6 +1994,7 @@
       }
       if (cmd === 0x12) {
         // BON2: first hit loads BONV, subsequent hits continue with a tighter burst.
+        const wasBon2 = bon2Active;
         const core = renderRomGwaveVector("BONV", {
           bitDepth: bits,
           romTiming,
@@ -1983,16 +2002,24 @@
           cpuHz,
           stepScale: (stepMs / 22.0) * pitchScale,
         });
-        const burstSec = bon2Active
+        if (mode === "raw") {
+          bon2Active = true;
+          return trimPcmWindow(core, wasBon2 ? 0.34 : 0.52, 0.012);
+        }
+        const burstSec = wasBon2
           ? clamp((stepMs / 1000) * 0.85, 0.05, 0.18)
           : clamp((stepMs / 1000) * 1.15, 0.07, 0.28);
         bon2Active = true;
         return trimPcmWindow(core, burstSec, 0.01);
       }
       if (cmd === 0x13) {
-        // BGEND: control/end command; emit a noisy tail when a BON2 chain is active.
-        if (!bon2Active) return new Float32Array([0]);
+        // BGEND control/end command.
+        const hadBon2 = bon2Active;
         bon2Active = false;
+        bg1Flag = 0;
+        bg2Flag = 0;
+        if (mode === "raw") return new Float32Array([0]);
+        if (!hadBon2) return new Float32Array([0]);
         return renderFilteredNoiseRoutine({
           fmaxInit: 0xff,
           fdf: 1,
@@ -2070,8 +2097,9 @@
       return new Float32Array([0]);
     }
 
-    function renderSoundScriptPcm(script, p, level) {
+    function renderSoundScriptPcm(script, p, level, opts = {}) {
       if (!Array.isArray(script) || !script.length) return new Float32Array([0]);
+      const commandMode = opts.commandMode === "raw" ? "raw" : "event";
       const commandBursts = [];
       let atSec = 0;
       let maxEnd = 0;
@@ -2080,7 +2108,7 @@
         const repeat = clamp(Math.round(step.repeat ?? 1), 1, 16);
         const gap = clamp((step.delayTicks ?? 1) * 0.016, 0.002, 3.0);
         for (let r = 0; r < repeat; r++) {
-          const pcm = renderRomCommandPcm(step.cmd & 0xff, p, level);
+          const pcm = renderRomCommandPcm(step.cmd & 0xff, p, level, commandMode);
           commandBursts.push({ atSec, pcm, gain: 1.0 });
           maxEnd = Math.max(maxEnd, atSec + pcm.length / ctx.sampleRate);
           atSec += gap;
@@ -2103,6 +2131,7 @@
       const perEventTailSec = clamp(opts.perEventTailSec ?? 0.006, 0, 0.5);
       const finalTailSec = clamp(opts.finalTailSec ?? 0.12, 0, 1.5);
       const minEventSec = clamp(opts.minEventSec ?? 0.01, 0.001, 1.0);
+      const commandMode = opts.commandMode === "raw" ? "raw" : "event";
 
       const events = [];
       let atSec = 0;
@@ -2127,7 +2156,7 @@
         const baseWindowSec = Math.max(minEventSec, (nextAtSec - ev.atSec) * windowFactor);
         const windowSec = baseWindowSec + (isLast ? finalTailSec : perEventTailSec);
         const maxSamples = Math.max(1, Math.floor(windowSec * ctx.sampleRate));
-        const pcm = renderRomCommandPcm(ev.cmd, p, level);
+        const pcm = renderRomCommandPcm(ev.cmd, p, level, commandMode);
         const sliceLen = Math.min(pcm.length, maxSamples);
         if (sliceLen <= 0) continue;
         const slice = new Float32Array(sliceLen);
@@ -2169,6 +2198,7 @@
 
     function renderDefenderSmartbombPcm(p, level) {
       return renderSoundScriptPcmWindowed(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level, {
+        commandMode: "raw",
         windowFactor: 0.88,
         perEventTailSec: 0.003,
         finalTailSec: 0.09,
@@ -2178,7 +2208,7 @@
     }
 
     function triggerPresetStartup(p, t, level) {
-      bon2Active = false;
+      resetRomStateFlags();
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
@@ -2196,6 +2226,7 @@
         variant
       }, t);
       const stepPcm = renderSoundScriptPcmWindowed(startupScript, p, level, {
+        commandMode: "raw",
         windowFactor: 0.94,
         perEventTailSec: 0.008,
         finalTailSec: 0.18,
@@ -2243,7 +2274,7 @@
     }
 
     function triggerPresetSmartbomb(p, t, level) {
-      bon2Active = false;
+      resetRomStateFlags();
       const hpf = clamp(p.presetHPF ?? 38, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 9500, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
@@ -2283,10 +2314,12 @@
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 12000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
-      const pcm = renderRomCommandPcm(cmd & 0xff, p, clamp(level, 0.01, 2.0));
+      const auditionMode = p.auditionMode === "event" ? "event" : "raw";
+      const pcm = renderRomCommandPcm(cmd & 0xff, p, clamp(level, 0.01, 2.0), auditionMode);
       traceLog("audition-command", {
         voice: voiceIndex + 1,
         cmd: cmd & 0xff,
+        mode: auditionMode,
         lenMs: (pcm.length / ctx.sampleRate) * 1000
       }, t);
       const totalSec = Math.max(0.04, pcm.length / ctx.sampleRate);
@@ -3702,6 +3735,7 @@
       presetHPF: p.presetHPF ?? 90,
       presetLPF: p.presetLPF ?? 14000,
       presetCabinet: p.presetCabinet === true,
+      auditionMode: auditionModeSelect ? auditionModeSelect.value : "raw",
     };
   }
 
@@ -3714,7 +3748,12 @@
       : state.activeTracks.findIndex(Boolean);
     if (voiceIndex < 0 || !state.voices[voiceIndex] || !state.voices[voiceIndex].auditionCommand) return;
     const params = buildAuditionPresetParams();
-    traceLog("audition-play", { voice: voiceIndex + 1, cmd, name: DEFENDER_AUDITION_LABELS[cmd] || "unknown" });
+    traceLog("audition-play", {
+      voice: voiceIndex + 1,
+      cmd,
+      mode: params.auditionMode === "event" ? "event" : "raw",
+      name: DEFENDER_AUDITION_LABELS[cmd] || "unknown"
+    });
     state.voices[voiceIndex].auditionCommand(cmd, params, 1.0);
   }
 

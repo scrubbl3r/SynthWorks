@@ -582,7 +582,7 @@ body{
 
 .auditionControls{
   display:grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items:center;
   gap:10px;
   width:100%;
@@ -591,6 +591,10 @@ body{
 #auditionCommandSelect{
   width:100%;
   min-width:0;
+}
+
+#auditionModeSelect{
+  min-width:90px;
 }
 
 #auditionCommandHex{
