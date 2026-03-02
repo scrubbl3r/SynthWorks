@@ -242,6 +242,8 @@
     SPNR: 0xff9a,
     COOLDN: 0xff9b,
     STDSND: 0xffc2,
+    ORGTAB: 0xfdaa,
+    NOTTAB: 0xfe41,
     ED10FP: 0xffe9,
     ED13FP: 0xffef,
     TRBPAT: 0xfff8,
@@ -1044,6 +1046,8 @@
       waves,
       vectors,
       radsnd: readRomBytes(rom, DEFENDER_ROM_ADDR.RADSND, 16),
+      organTunes: parseOrganTunes(DEFENDER_ROM_ADDR.ORGTAB),
+      nottab: readRomBytes(rom, DEFENDER_ROM_ADDR.NOTTAB, 12),
     };
   }
 
@@ -1713,45 +1717,70 @@
       return new Float32Array(out.length ? out : [0]);
     }
 
-    function renderOrganTunePcm(sec = 1.8) {
-      // Compact ORGTAB-inspired phantom-ish phrase for audition.
-      const notes = [0x1d, 0x23, 0x08];
-      const durs = [0.32, 0.32, 1.0];
-      const totalDur = durs.reduce((a, b) => a + b, 0);
-      const scale = sec / totalDur;
-      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
-      const out = new Float32Array(len);
-      let t0 = 0;
-      for (let i = 0; i < notes.length; i++) {
-        const dur = durs[i] * scale;
-        const nlen = Math.max(1, Math.floor(dur * ctx.sampleRate));
-        const period = Math.max(1, notes[i] & 0xff);
-        const hz = clamp(894886 / (period * 38.0), 50, 4200);
-        const phaseStep = (2 * Math.PI * hz) / ctx.sampleRate;
-        for (let n = 0; n < nlen && t0 + n < out.length; n++) {
-          const env = Math.exp(-2.2 * (n / nlen));
-          const s = Math.sin(phaseStep * n) * 0.62 + Math.sin(phaseStep * 2 * n) * 0.21;
-          out[t0 + n] += s * env;
-        }
-        t0 += nlen;
+    function popcount8(x) {
+      let v = x & 0xff;
+      let c = 0;
+      while (v) {
+        v &= (v - 1);
+        c++;
       }
-      for (let i = 0; i < out.length; i++) out[i] = clamp(out[i], -1, 1);
+      return c;
+    }
+
+    function renderOrganEntryPcm(entry, maxSec = 3.0) {
+      const maxSamples = Math.max(1, Math.floor(maxSec * ctx.sampleRate));
+      const out = [];
+      let tempb = 0;
+      const oscMask = entry.oscMask & 0xff;
+      const dur = Math.max(1, entry.dur | 0);
+      const delay = entry.delay & 0xff;
+      // Delay byte is compiled into a tiny code stub; model as extra cycles per sample.
+      const iterCycles = 34 + delay * 4.0;
+      const hold = Math.max(1, Math.round((iterCycles / 894886) * ctx.sampleRate));
+
+      for (let i = 0; i < dur && out.length < maxSamples; i++) {
+        tempb = (tempb + 1) & 0xff;
+        const b = tempb & oscMask;
+        const a = popcount8(b) & 0x0f;
+        const s = quantizeSample(u8ToSample((a << 4) & 0xff), 7);
+        for (let h = 0; h < hold && out.length < maxSamples; h++) out.push(s);
+      }
+      return new Float32Array(out.length ? out : [0]);
+    }
+
+    function renderOrganTunePcm(sec = 1.8) {
+      const tunes = DEFENDER_ROM_TABLES && Array.isArray(DEFENDER_ROM_TABLES.organTunes)
+        ? DEFENDER_ROM_TABLES.organTunes
+        : [];
+      const tune = tunes[0] && tunes[0].length ? tunes[0] : [
+        { oscMask: 0x7f, delay: 0x1d, dur: 0x0ffb },
+        { oscMask: 0x7f, delay: 0x23, dur: 0x0f15 },
+        { oscMask: 0xfe, delay: 0x08, dur: 0x508b },
+      ];
+      const chunks = tune.map((e) => renderOrganEntryPcm(e, sec));
+      let total = 0;
+      for (let i = 0; i < chunks.length; i++) total += chunks[i].length;
+      const maxLen = Math.max(1, Math.floor(sec * ctx.sampleRate));
+      const out = new Float32Array(Math.min(maxLen, total));
+      let p = 0;
+      for (let i = 0; i < chunks.length && p < out.length; i++) {
+        const c = chunks[i];
+        const take = Math.min(c.length, out.length - p);
+        out.set(c.subarray(0, take), p);
+        p += take;
+      }
       return out;
     }
 
     function renderOrganNotePcm(sec = 1.0, nottabIndex = 4) {
-      const len = Math.max(1, Math.floor(sec * ctx.sampleRate));
-      const out = new Float32Array(len);
-      const idx = clamp(Math.round(nottabIndex), 0, DEFENDER_NOTTAB.length - 1);
-      const period = DEFENDER_NOTTAB[idx] & 0xff;
-      const hz = clamp(894886 / (period * 42.0), 60, 3200);
-      const step = (2 * Math.PI * hz) / ctx.sampleRate;
-      for (let i = 0; i < len; i++) {
-        const env = Math.exp(-3.2 * (i / len));
-        const sig = Math.sin(step * i) * 0.64 + Math.sin(step * 0.5 * i) * 0.28;
-        out[i] = sig * env;
-      }
-      return out;
+      const nottab = DEFENDER_ROM_TABLES && Array.isArray(DEFENDER_ROM_TABLES.nottab) && DEFENDER_ROM_TABLES.nottab.length >= 12
+        ? DEFENDER_ROM_TABLES.nottab
+        : DEFENDER_NOTTAB;
+      const idx = clamp(Math.round(nottabIndex), 0, nottab.length - 1);
+      const delay = nottab[idx] & 0xff;
+      // ORGANN mode sets OSCIL with 0x7F mask and indefinite duration.
+      const entry = { oscMask: 0x7f, delay, dur: 0xffff };
+      return renderOrganEntryPcm(entry, sec);
     }
 
     function renderRomCommandPcm(cmd, p, level) {
@@ -3462,3 +3491,24 @@
   init();
   updateAuditionHexReadout();
 })();
+    function parseOrganTunes(addr) {
+      const tunes = [];
+      let p = addr;
+      let guard = 0;
+      while (guard++ < 128) {
+        const len = defenderRomByte(rom, p) & 0xff;
+        p += 1;
+        if (len === 0) break;
+        const count = Math.floor(len / 4);
+        const entries = [];
+        for (let i = 0; i < count; i++) {
+          const oscMask = defenderRomByte(rom, p) & 0xff;
+          const delay = defenderRomByte(rom, p + 1) & 0xff;
+          const dur = ((defenderRomByte(rom, p + 2) & 0xff) << 8) | (defenderRomByte(rom, p + 3) & 0xff);
+          entries.push({ oscMask, delay, dur });
+          p += 4;
+        }
+        tunes.push(entries);
+      }
+      return tunes;
+    }
