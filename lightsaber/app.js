@@ -194,6 +194,7 @@
   ];
   // Defa7 sound-script tables (timer ticks are 16 ms units).
   const DEFENDER_SOUND_SCRIPTS = {
+    START_DISTORTO: [{ repeat: 1, delayTicks: 0x01, cmd: 0x02 }],
     START1: [{ repeat: 1, delayTicks: 0x40, cmd: 0x0a }],
     START2: [{ repeat: 1, delayTicks: 0x10, cmd: 0x0b }],
     SMARTBOMB: [
@@ -267,7 +268,7 @@
     return {
       mode: "texture",
       presetEngine: "none",
-      presetStartupVariant: "st1",
+      presetStartupVariant: "stdv",
       presetBaseHz: 110,
       presetSweep: 9.5,
       presetRomTiming: true,
@@ -543,7 +544,7 @@
     const p0 = mk();
     p0.mode = "texture";
     p0.presetEngine = "defender-startup";
-    p0.presetStartupVariant = "st1";
+    p0.presetStartupVariant = "stdv";
     p0.textureBehavior = "oneshot";
     p0.engineEnabled = false;
     p0.clockRate = 1.0;
@@ -590,11 +591,11 @@
     p0.presetEchoes = 1;
     p0.presetEchoDelayMs = 72.0;
     p0.presetEchoDecay = 0.58;
-    p0.presetCabinet = true;
+    p0.presetCabinet = false;
     p0.presetBits = 7;
     p0.presetPulseWidth = 0.5;
     p0.presetHPF = 90;
-    p0.presetLPF = 10000;
+    p0.presetLPF = 14000;
 
     const presetVoices = [p0];
     presetVoices.forEach((p) => {
@@ -620,7 +621,7 @@
     const p0 = mk();
     p0.mode = "texture";
     p0.presetEngine = "defender-smartbomb";
-    p0.presetStartupVariant = "st1";
+    p0.presetStartupVariant = "stdv";
     p0.textureBehavior = "oneshot";
     p0.engineEnabled = false;
     p0.clockRate = 1.0;
@@ -1147,7 +1148,7 @@
     presetLP.frequency.value = 10000;
     const presetReconLP = ctx.createBiquadFilter();
     presetReconLP.type = "lowpass";
-    presetReconLP.frequency.value = 4200;
+    presetReconLP.frequency.value = 9200;
     presetReconLP.Q.value = 0.707;
     const presetGain = ctx.createGain();
     presetGain.gain.value = 0.0;
@@ -1600,8 +1601,10 @@
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
       const useCabinet = p.presetCabinet !== false;
-      const variant = String(p.presetStartupVariant || "st1");
-      const startupScript = variant === "st2"
+      const variant = String(p.presetStartupVariant || "stdv");
+      const startupScript = variant === "stdv"
+        ? DEFENDER_SOUND_SCRIPTS.START_DISTORTO
+        : variant === "st2"
         ? DEFENDER_SOUND_SCRIPTS.START2
         : (variant === "st1st2"
           ? DEFENDER_SOUND_SCRIPTS.START1.concat(DEFENDER_SOUND_SCRIPTS.START2)
@@ -2207,7 +2210,7 @@
       if (p.delayMix == null) p.delayMix = 0.22;
       if (p.delayTime == null) p.delayTime = 0.14;
       if (p.feedback == null) p.feedback = 0.32;
-      if (p.presetStartupVariant == null) p.presetStartupVariant = "st1";
+      if (p.presetStartupVariant == null) p.presetStartupVariant = "stdv";
       if (p.gain == null) p.gain = 0.15;
       if (p.textureVolume == null) p.textureVolume = 1.0;
       if (p.noiseVolume == null) p.noiseVolume = 1.0;
@@ -2641,6 +2644,7 @@
   function formatValue(key, value) {
     if (key === "mode") return value;
     if (key === "presetStartupVariant") {
+      if (value === "stdv") return "STDV (start-distorto)";
       if (value === "st2") return "ST2";
       if (value === "st1st2") return "ST1+ST2";
       return "ST1";
