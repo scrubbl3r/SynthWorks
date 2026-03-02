@@ -154,6 +154,18 @@
         </label>
 
         <label class="row" data-mode="texture" data-preset-startup="1">
+          <span>ROM Timing</span>
+          <input type="checkbox" data-param="presetRomTiming" />
+          <output data-out="presetRomTiming"></output>
+        </label>
+
+        <label class="row" data-mode="texture" data-preset-startup="1">
+          <span>CPU Hz</span>
+          <input type="range" min="600000" max="1400000" step="1000" data-param="presetCpuHz" />
+          <output data-out="presetCpuHz"></output>
+        </label>
+
+        <label class="row" data-mode="texture" data-preset-startup="1">
           <span>Step Time</span>
           <input type="range" min="12" max="120" step="0.1" data-param="presetStepMs" />
           <output data-out="presetStepMs"></output>

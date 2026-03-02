@@ -174,6 +174,8 @@
       presetEngine: "none",
       presetBaseHz: 110,
       presetSweep: 9.5,
+      presetRomTiming: true,
+      presetCpuHz: 894886,
       presetStepMs: 34,
       presetPeriodScale: 8.4,
       presetEchoes: 1,
@@ -481,6 +483,8 @@
     // ROM-authentic startup defaults (STDV: $12,$05,$1A,$FF,0,39,STDSND).
     p0.presetBaseHz = 110.0;
     p0.presetSweep = 1.0;
+    p0.presetRomTiming = true;
+    p0.presetCpuHz = 894886;
     p0.presetStepMs = 34.0;
     p0.presetPeriodScale = 1.0;
     p0.presetEchoes = 1;
@@ -1039,7 +1043,7 @@
       node.gain.linearRampToValueAtTime(0, t + a + s + d);
     }
 
-    function renderDefenderStartupPcm(stepScale = 1.0) {
+    function renderDefenderStartupPcm(stepScale = 1.0, useRomTiming = false, cpuHz = 894886) {
       // Vector STDV: GECHO=1, GCCNT=2, GECDEC=0, PREDECAY=$1A, STDSND length=39.
       const gccnt = 2;
       const predecay = 0x1a;
@@ -1050,10 +1054,17 @@
         return (u8 - 127.5) / 127.5;
       });
       const holdScale = clamp(stepScale, 0.2, 6.0);
+      const hz = clamp(cpuHz || 894886, 200000, 3000000);
+      // 680x cycle approximation for the inner sample loop in GWAVE:
+      // period wait: DECA/BNE loop + fixed per-sample overhead around output.
+      const periodCycles = 5.0;
+      const sampleOverheadCycles = 26.0;
       const out = [];
       for (let i = 0; i < DEFENDER_STARTUP_DISTORTO.length; i++) {
         const period = Math.max(1, DEFENDER_STARTUP_DISTORTO[i]);
-        const hold = Math.max(1, Math.round(period * holdScale));
+        const hold = useRomTiming
+          ? Math.max(1, Math.round(((sampleOverheadCycles + period * periodCycles) / hz) * ctx.sampleRate))
+          : Math.max(1, Math.round(period * holdScale));
         for (let c = 0; c < gccnt; c++) {
           for (let s = 0; s < wave.length; s++) {
             const sample = wave[s];
@@ -1072,8 +1083,10 @@
       const bitDepth = clamp(Math.round(p.presetBits ?? 7), 3, 12);
       const hpf = clamp(p.presetHPF ?? 90, 20, 4000);
       const lpf = clamp(p.presetLPF ?? 10000, 1200, 16000);
+      const romTiming = !!p.presetRomTiming;
+      const cpuHz = clamp(p.presetCpuHz ?? 894886, 200000, 3000000);
       const stepScale = stepMs / 22.0;
-      const basePcm = renderDefenderStartupPcm(stepScale);
+      const basePcm = renderDefenderStartupPcm(stepScale, romTiming, cpuHz);
       const baseDur = basePcm.length / ctx.sampleRate;
       const totalSec = baseDur + (echoes - 1) * echoDelay;
 
@@ -2011,7 +2024,11 @@
         input.min = 0;
         input.max = ENV_TOTAL_MS;
       }
-      input.disabled = state.active == null || effectiveMuted(state.active);
+      let disabled = state.active == null || effectiveMuted(state.active);
+      if (p.presetEngine === "defender-startup" && key === "presetStepMs" && p.presetRomTiming) {
+        disabled = true;
+      }
+      input.disabled = disabled;
       const out = controls.querySelector(`[data-out='${key}']`);
       if (out) out.textContent = formatValue(key, p[key]);
     });
@@ -2064,6 +2081,8 @@
 
   function formatValue(key, value) {
     if (key === "mode") return value;
+    if (key === "presetRomTiming") return value ? "On" : "Off";
+    if (key === "presetCpuHz") return `${Math.round(value)} Hz`;
     if (key === "presetStepMs") return `${value.toFixed(1)} ms`;
     if (key === "presetEchoes") return `${Math.round(value)}`;
     if (key === "presetEchoDelayMs") return `${value.toFixed(1)} ms`;
@@ -2276,6 +2295,8 @@
     if (isPresetStartup) {
       const allowed = new Set([
         "mode",
+        "presetRomTiming",
+        "presetCpuHz",
         "presetStepMs",
         "presetEchoes",
         "presetEchoDelayMs",
