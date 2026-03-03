@@ -2268,11 +2268,64 @@
       return out;
     }
 
+    function renderSmartbombBlastPcm(p, level) {
+      const sr = ctx.sampleRate;
+      const blastCount = 4;
+      const blastGapSec = 0.11;
+      const attackSec = 0.003;
+      const decaySec = 2.0;
+      const bodyLowpass = clamp(p.presetLPF ?? 7800, 1200, 14000);
+      const hp = clamp(p.presetHPF ?? 45, 20, 300);
+      const drive = 4.8;
+      const bitDepth = 5;
+      const oneLen = Math.max(1, Math.floor((attackSec + decaySec) * sr));
+      const totalLen = Math.max(1, Math.floor((blastCount - 1) * blastGapSec * sr + oneLen));
+      const out = new Float32Array(totalLen);
+
+      const hpA = Math.exp(-2 * Math.PI * hp / sr);
+      const lpA = Math.exp(-2 * Math.PI * bodyLowpass / sr);
+      let hpState = 0;
+      let lpState = 0;
+      let prevIn = 0;
+
+      const crush = (x, bits) => {
+        const levels = Math.pow(2, bits) - 1;
+        const u = clamp(Math.round(((x + 1) * 0.5) * levels), 0, levels);
+        return (u / levels) * 2 - 1;
+      };
+
+      for (let b = 0; b < blastCount; b++) {
+        const start = Math.floor(b * blastGapSec * sr);
+        for (let i = 0; i < oneLen && start + i < out.length; i++) {
+          const t = i / sr;
+          const env = t < attackSec
+            ? (t / Math.max(attackSec, 0.0001))
+            : Math.exp(-(t - attackSec) / decaySec);
+
+          // White noise -> HP -> LP to keep it explosive but not flat.
+          const n = Math.random() * 2 - 1;
+          const hpOut = hpA * (hpState + n - prevIn);
+          hpState = hpOut;
+          prevIn = n;
+          lpState = lpA * lpState + (1 - lpA) * hpOut;
+
+          // Distorted + crushed.
+          const d = Math.tanh(lpState * drive);
+          const q = crush(d, bitDepth);
+          const tone = q * env;
+
+          out[start + i] = clamp(out[start + i] + tone, -1, 1);
+        }
+      }
+
+      // Slight overall soft clip for arcade feel.
+      for (let i = 0; i < out.length; i++) out[i] = Math.tanh(out[i] * 1.35) * clamp(level, 0.2, 2.0);
+      return out;
+    }
+
     function renderDefenderSmartbombPcm(p, level) {
-      return renderSoundScriptPcm(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level, {
-        commandMode: "raw",
-        traceTag: "smartbomb-raw",
-      });
+      traceLog("smartbomb-macro", { voice: voiceIndex + 1, blasts: 4, decayMs: 2000 });
+      return renderSmartbombBlastPcm(p, level);
     }
 
     function triggerPresetStartup(p, t, level) {
