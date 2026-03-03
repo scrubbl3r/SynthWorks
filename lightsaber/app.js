@@ -1470,6 +1470,8 @@
     let oneShotCooldownUntil = 0;
     let presetGateUntil = 0;
     let bon2Active = false;
+    let bon2CoreCache = null;
+    let bon2Cursor = 0;
     let bg1Flag = 0;
     let bg2Flag = 0;
     let sp1Flag = 0;
@@ -1481,9 +1483,24 @@
 
     function resetRomStateFlags() {
       bon2Active = false;
+      bon2CoreCache = null;
+      bon2Cursor = 0;
       bg1Flag = 0;
       bg2Flag = 0;
       sp1Flag = 0;
+    }
+
+    function slicePcmCircular(pcm, start, len) {
+      const src = pcm && pcm.length ? pcm : new Float32Array([0]);
+      const outLen = Math.max(1, len | 0);
+      const out = new Float32Array(outLen);
+      let pos = ((start | 0) % src.length + src.length) % src.length;
+      for (let i = 0; i < outLen; i++) {
+        out[i] = src[pos];
+        pos++;
+        if (pos >= src.length) pos = 0;
+      }
+      return out;
     }
 
     function noiseTypeProfile(noiseType) {
@@ -1995,17 +2012,25 @@
       if (cmd === 0x12) {
         // BON2: first hit loads BONV, subsequent hits continue with a tighter burst.
         const wasBon2 = bon2Active;
-        const core = renderRomGwaveVector("BONV", {
-          bitDepth: bits,
-          romTiming,
-          strictLoop,
-          cpuHz,
-          stepScale: (stepMs / 22.0) * pitchScale,
-        });
+        if (!bon2CoreCache) {
+          bon2CoreCache = renderRomGwaveVector("BONV", {
+            bitDepth: bits,
+            romTiming,
+            strictLoop,
+            cpuHz,
+            stepScale: (stepMs / 22.0) * pitchScale,
+          });
+          bon2Cursor = 0;
+        }
         if (mode === "raw") {
           bon2Active = true;
-          return trimPcmWindow(core, wasBon2 ? 0.34 : 0.52, 0.012);
+          const sliceSec = wasBon2 ? 0.34 : 0.52;
+          const sliceLen = Math.max(1, Math.floor(sliceSec * ctx.sampleRate));
+          const seg = slicePcmCircular(bon2CoreCache, bon2Cursor, sliceLen);
+          bon2Cursor = (bon2Cursor + sliceLen) % Math.max(1, bon2CoreCache.length);
+          return trimPcmWindow(seg, sliceSec, 0.012);
         }
+        const core = bon2CoreCache;
         const burstSec = wasBon2
           ? clamp((stepMs / 1000) * 0.85, 0.05, 0.18)
           : clamp((stepMs / 1000) * 1.15, 0.07, 0.28);
@@ -2018,15 +2043,32 @@
         bon2Active = false;
         bg1Flag = 0;
         bg2Flag = 0;
-        if (mode === "raw") return new Float32Array([0]);
-        if (!hadBon2) return new Float32Array([0]);
-        return renderFilteredNoiseRoutine({
+        const tailNoise = renderFilteredNoiseRoutine({
           fmaxInit: 0xff,
           fdf: 1,
           dsflg: 1,
           sampleCount: 1450,
           maxSec: 1.35,
         });
+        if (mode === "raw") {
+          if (!hadBon2) return new Float32Array([0]);
+          const tailLen = tailNoise.length;
+          const coreTailLen = Math.max(1, Math.floor(0.20 * ctx.sampleRate));
+          const coreTail = bon2CoreCache
+            ? slicePcmCircular(bon2CoreCache, bon2Cursor, coreTailLen)
+            : new Float32Array(coreTailLen);
+          const out = new Float32Array(Math.max(tailLen, coreTailLen));
+          for (let i = 0; i < out.length; i++) {
+            const a = i < tailNoise.length ? tailNoise[i] : 0;
+            const b = i < coreTail.length ? coreTail[i] * 0.42 * (1 - i / Math.max(1, coreTail.length - 1)) : 0;
+            out[i] = clamp(a + b, -1, 1);
+          }
+          bon2CoreCache = null;
+          bon2Cursor = 0;
+          return out;
+        }
+        if (!hadBon2) return new Float32Array([0]);
+        return tailNoise;
       }
       if (cmd === 0x14) {
         // TURBO
