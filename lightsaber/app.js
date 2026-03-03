@@ -2029,13 +2029,16 @@
           bon2Active = true;
           const evolve = clamp01((bon2RepeatCount - 1) / 8);
           const sliceSec = wasBon2
-            ? lerp(0.34, 0.24, evolve)
-            : 0.52;
+            ? lerp(0.22, 0.14, evolve)
+            : 0.36;
           const sliceLen = Math.max(1, Math.floor(sliceSec * ctx.sampleRate));
           const seg = slicePcmCircular(bon2CoreCache, bon2Cursor, sliceLen);
           bon2Cursor = (bon2Cursor + sliceLen) % Math.max(1, bon2CoreCache.length);
-          const fadeSec = lerp(0.012, 0.006, evolve);
-          return trimPcmWindow(seg, sliceSec, fadeSec);
+          const fadeSec = lerp(0.008, 0.004, evolve);
+          const shaped = trimPcmWindow(seg, sliceSec, fadeSec);
+          const crushBits = Math.max(3, bits - 1);
+          for (let i = 0; i < shaped.length; i++) shaped[i] = quantizeSample(shaped[i], crushBits);
+          return shaped;
         }
         const core = bon2CoreCache;
         const burstSec = wasBon2
@@ -2054,24 +2057,27 @@
           fmaxInit: 0xff,
           fdf: 1,
           dsflg: 1,
-          sampleCount: 1450,
-          maxSec: 1.35,
+          sampleCount: 1750,
+          maxSec: 1.55,
         });
         if (mode === "raw") {
           if (!hadBon2) return new Float32Array([0]);
           const tailLen = tailNoise.length;
-          const coreTailLen = Math.max(1, Math.floor(0.16 * ctx.sampleRate));
+          const coreTailLen = Math.max(1, Math.floor(0.12 * ctx.sampleRate));
           const coreTail = bon2CoreCache
             ? slicePcmCircular(bon2CoreCache, bon2Cursor, coreTailLen)
             : new Float32Array(coreTailLen);
           const out = new Float32Array(Math.max(tailLen, coreTailLen));
           const bon2Density = clamp01((bon2RepeatCount - 1) / 6);
-          const coreTailGain = lerp(0.34, 0.18, bon2Density);
+          const coreTailGain = lerp(0.24, 0.10, bon2Density);
           for (let i = 0; i < out.length; i++) {
             const a = i < tailNoise.length ? tailNoise[i] : 0;
             const b = i < coreTail.length ? coreTail[i] * coreTailGain * (1 - i / Math.max(1, coreTail.length - 1)) : 0;
-            const mix = clamp(a + b, -1, 1);
-            out[i] = quantizeSample(mix, Math.max(3, bits - 1));
+            const transient = i < Math.floor(ctx.sampleRate * 0.04)
+              ? (Math.random() * 2 - 1) * 0.14 * (1 - i / Math.max(1, Math.floor(ctx.sampleRate * 0.04) - 1))
+              : 0;
+            const mix = clamp(a + b + transient, -1, 1);
+            out[i] = quantizeSample(mix, Math.max(3, bits - 2));
           }
           bon2CoreCache = null;
           bon2Cursor = 0;
