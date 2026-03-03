@@ -2151,6 +2151,19 @@
         const gap = clamp((step.delayTicks ?? 1) * 0.016, 0.002, 3.0);
         for (let r = 0; r < repeat; r++) {
           const pcm = renderRomCommandPcm(step.cmd & 0xff, p, level, commandMode);
+          if (opts.traceTag) {
+            traceLog("script-event", {
+              voice: voiceIndex + 1,
+              src: opts.traceTag,
+              step: i + 1,
+              rep: r + 1,
+              cmd: step.cmd & 0xff,
+              name: DEFENDER_AUDITION_LABELS[step.cmd & 0xff] || "unknown",
+              atMs: atSec * 1000,
+              gapMs: gap * 1000,
+              lenMs: (pcm.length / ctx.sampleRate) * 1000
+            });
+          }
           commandBursts.push({ atSec, pcm, gain: 1.0 });
           maxEnd = Math.max(maxEnd, atSec + pcm.length / ctx.sampleRate);
           atSec += gap;
@@ -2239,13 +2252,9 @@
     }
 
     function renderDefenderSmartbombPcm(p, level) {
-      return renderSoundScriptPcmWindowed(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level, {
+      return renderSoundScriptPcm(DEFENDER_SOUND_SCRIPTS.SMARTBOMB, p, level, {
         commandMode: "raw",
-        windowFactor: 0.88,
-        perEventTailSec: 0.003,
-        finalTailSec: 0.09,
-        minEventSec: 0.012,
-        traceTag: "smartbomb",
+        traceTag: "smartbomb-raw",
       });
     }
 
