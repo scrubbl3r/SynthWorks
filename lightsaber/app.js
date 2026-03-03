@@ -709,8 +709,8 @@
 
     p0.presetBaseHz = 95.0;
     p0.presetSweep = 1.0;
-    p0.presetRomTiming = false;
-    p0.presetStrictRomLoop = false;
+    p0.presetRomTiming = true;
+    p0.presetStrictRomLoop = true;
     p0.presetCpuHz = 894886;
     p0.presetStepMs = 64.0;      // 0x04 * 16ms
     p0.presetPeriodScale = 1.0;
@@ -718,7 +718,7 @@
     p0.presetEchoDelayMs = 256.0; // 0x10 * 16ms delayed tail hint
     p0.presetEchoDecay = 0.78;
     p0.presetCabinet = true;
-    p0.presetBits = 7;
+    p0.presetBits = 6;
     p0.presetPulseWidth = 0.5;
     p0.presetHPF = 38;
     p0.presetLPF = 9500;
@@ -1472,6 +1472,7 @@
     let bon2Active = false;
     let bon2CoreCache = null;
     let bon2Cursor = 0;
+    let bon2RepeatCount = 0;
     let bg1Flag = 0;
     let bg2Flag = 0;
     let sp1Flag = 0;
@@ -1485,6 +1486,7 @@
       bon2Active = false;
       bon2CoreCache = null;
       bon2Cursor = 0;
+      bon2RepeatCount = 0;
       bg1Flag = 0;
       bg2Flag = 0;
       sp1Flag = 0;
@@ -2023,12 +2025,17 @@
           bon2Cursor = 0;
         }
         if (mode === "raw") {
+          bon2RepeatCount = clamp(bon2RepeatCount + 1, 1, 32);
           bon2Active = true;
-          const sliceSec = wasBon2 ? 0.34 : 0.52;
+          const evolve = clamp01((bon2RepeatCount - 1) / 8);
+          const sliceSec = wasBon2
+            ? lerp(0.34, 0.24, evolve)
+            : 0.52;
           const sliceLen = Math.max(1, Math.floor(sliceSec * ctx.sampleRate));
           const seg = slicePcmCircular(bon2CoreCache, bon2Cursor, sliceLen);
           bon2Cursor = (bon2Cursor + sliceLen) % Math.max(1, bon2CoreCache.length);
-          return trimPcmWindow(seg, sliceSec, 0.012);
+          const fadeSec = lerp(0.012, 0.006, evolve);
+          return trimPcmWindow(seg, sliceSec, fadeSec);
         }
         const core = bon2CoreCache;
         const burstSec = wasBon2
@@ -2053,18 +2060,22 @@
         if (mode === "raw") {
           if (!hadBon2) return new Float32Array([0]);
           const tailLen = tailNoise.length;
-          const coreTailLen = Math.max(1, Math.floor(0.20 * ctx.sampleRate));
+          const coreTailLen = Math.max(1, Math.floor(0.16 * ctx.sampleRate));
           const coreTail = bon2CoreCache
             ? slicePcmCircular(bon2CoreCache, bon2Cursor, coreTailLen)
             : new Float32Array(coreTailLen);
           const out = new Float32Array(Math.max(tailLen, coreTailLen));
+          const bon2Density = clamp01((bon2RepeatCount - 1) / 6);
+          const coreTailGain = lerp(0.34, 0.18, bon2Density);
           for (let i = 0; i < out.length; i++) {
             const a = i < tailNoise.length ? tailNoise[i] : 0;
-            const b = i < coreTail.length ? coreTail[i] * 0.42 * (1 - i / Math.max(1, coreTail.length - 1)) : 0;
-            out[i] = clamp(a + b, -1, 1);
+            const b = i < coreTail.length ? coreTail[i] * coreTailGain * (1 - i / Math.max(1, coreTail.length - 1)) : 0;
+            const mix = clamp(a + b, -1, 1);
+            out[i] = quantizeSample(mix, Math.max(3, bits - 1));
           }
           bon2CoreCache = null;
           bon2Cursor = 0;
+          bon2RepeatCount = 0;
           return out;
         }
         if (!hadBon2) return new Float32Array([0]);
